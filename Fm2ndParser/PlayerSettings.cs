@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class PlayerSettings
+    public class PlayerSettings
     {
         public int Age { get; set; }
         public Gender Gender { get; set; }
