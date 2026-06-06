@@ -26,6 +26,8 @@ cd fm2ndparser
 dotnet build
 ```
 
+The compiled output is available in the `Publish` folder.
+
 ## Usage
 
 Parse a project starting from `.kgt`:
