@@ -5,26 +5,57 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
+using CommandLine;
+using CommandLine.Text;
 
 namespace Fm2ndParser
 {
     class Program
     {
-        static void Main(string[] args)
+        class Options
         {
-            if (!args.Any())
+            [Usage(ApplicationAlias = "Fm2ndParser")]
+            public static IEnumerable<Example> Examples
             {
-                Console.WriteLine("You must specify a .player path as argument");
-                return;
+                get
+                {
+                    yield return new Example("Single file", new Options { InputFiles = new[] { "character1.player" } });
+                    yield return new Example("Parse and Clean up", new Options { InputFiles = new[] { "character1.player" }, CleanUp = true });
+                    yield return new Example("Multiple files", new Options { InputFiles = new[] { "character1.player", "character2.player" } });
+                }
             }
 
-            var cleanUp = args.Contains("-c");
-            var newFiles = args.Contains("-n");
-            args = args.Where(x => x != "-c" && x != "-n").ToArray();
+            [Value(0, Required = true, Hidden = true, HelpText = "Input files to be processed.")]
+            public IEnumerable<string> InputFiles { get; set; }
 
-            foreach (var filename in args)
+            [Option('n', "new-files",
+              Default = false,
+              HelpText = "Instead of replacing the existing json, it creates another one.")]
+            public bool NewFiles { get; set; }
+
+            [Option('c', "clean-up",
+              Default = false,
+              HelpText = "Merges [I] blocks and does other cleanups for comparison purposes.")]
+            public bool CleanUp { get; set; }
+        }
+
+        static void Main(string[] args)
+        {
+            CommandLine.Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(RunOptions)
+                .WithNotParsed(HandleParseError);
+        }
+
+        private static void HandleParseError(IEnumerable<Error> obj)
+        {
+            //Console.WriteLine("You must specify a .player path as argument");
+        }
+
+        private static void RunOptions(Options options)
+        {
+            foreach (var filename in options.InputFiles)
             {
-                doParse(filename, cleanUp, !newFiles);
+                doParse(filename, options.CleanUp, !options.NewFiles);
             }
         }
 
