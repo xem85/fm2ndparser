@@ -1176,8 +1176,6 @@ namespace Fm2ndParser
 
         protected Command readCommand(Span<byte> bytes, ref int offset)
         {
-            Span<byte> word;
-
             var result = new Command
             {
                 Name = getString(bytes, 32, ref offset),
@@ -1188,15 +1186,15 @@ namespace Fm2ndParser
                 CrouchedSkill = getSkill(bytes, ref offset),
             };
 
-            word = getWord(bytes, 40, ref offset);
+            var word = getWord(bytes, 40, ref offset);
 
             return result;
         }
 
-        protected static Span<byte> getWord(Span<byte> bytes, int lenght, ref int offset)
+        protected static Span<byte> getWord(Span<byte> bytes, int length, ref int offset)
         {
-            Span<byte> word = bytes.Slice(offset, lenght);
-            offset += lenght;
+            Span<byte> word = bytes.Slice(offset, length);
+            offset += length;
             return word;
         }
 
