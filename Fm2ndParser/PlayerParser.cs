@@ -56,6 +56,7 @@ namespace Fm2ndParser
 
         private StoryMode parseStoryMode(Span<byte> bytes, ref int offset)
         {
+            // 206 bytes per entry
             var entries = new List<StoryEntry>();
             for (int i = 0; i < 100; i++)
             {
@@ -92,8 +93,6 @@ namespace Fm2ndParser
             {
                 Entries = entries
             };
-            // todo
-            // 206 bytes per entry
         }
 
         private StoryEntry parseFightStoryEntry(Span<byte> bytes, ref int offset)
@@ -296,7 +295,7 @@ namespace Fm2ndParser
             var correct = getByte(bytes, ref offset);
             var combo = getByte(bytes, ref offset);
 
-            var guardButton = getByte(bytes, ref offset);
+            var guardButton = (Button)getByte(bytes, ref offset);
             var lifeGaugeMax = getUInt32(bytes, ref offset);
             var specialGaugeMax = getUInt32(bytes, ref offset);
             var specialMaxStock = getUInt32(bytes, ref offset);
@@ -318,9 +317,25 @@ namespace Fm2ndParser
 
             var result = new PlayerSettings
             {
-                // todo
+                Age = age,
+                Gender = gender,
+                SideHPYPos = sideHPYPos,
+                Interval = interval,
+                HRatio = hRatio,
+                StartPos = startPos,
+                Correct = correct,
+                Combo = combo,
+                GuardButton = guardButton,
+                LifeGaugeMax = lifeGaugeMax,
+                SpecialGaugeMax = specialGaugeMax,
+                SpecialMaxStock = specialMaxStock,
+                NeutralGuard = neutralGuard,
+                SkyGuard = skyGuard,
+                GuardWithButton = guardWithButton,
+                PlayerAttacks = playerAttacks,
+                EnemyAttacks = enemyAttacks,
+                StartStock = startStock
             };
-
             return result;
         }
 
