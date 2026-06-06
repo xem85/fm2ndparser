@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class RBlock : Block
+    public class RBlock : Block
     {
         public short HitsStand { get; set; }
         public short HitsCrouched { get; set; }

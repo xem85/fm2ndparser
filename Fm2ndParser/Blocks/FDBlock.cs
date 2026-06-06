@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class FDBlock:Block
+    public class FDBlock:Block
     {
         public short X { get; set; }
         public short Y { get; set; }

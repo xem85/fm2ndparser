@@ -1,16 +1,21 @@
 ﻿namespace Fm2ndParser
 {
-    internal class CBlock : Block
+    public class CBlock : Block
     {
         public short Sound { get; set; }
         public bool Fails { get { return !Hits && !Uncond; } }
         public bool Hits { get; set; }
         public bool Uncond { get; set; }
-        public bool Level { get { return !Skill; } }
-        public bool Skill { get; set; }
+        public bool LevelCancelCondition { get { return !SkillCancelCondition; } }
+        public bool SkillCancelCondition { get; set; }
 
-        public byte From { get; internal set; }
-        public byte To { get; internal set; }
-        public object SkillNumber { get; internal set; }
+        public byte From { get; set; }
+        public byte To { get; set; }
+        public SkillReference Skill { get; set; }
+    }
+
+    public enum CBlockWhen
+    {
+
     }
 }

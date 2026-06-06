@@ -1,8 +1,8 @@
 ﻿namespace Fm2ndParser
 {
-    public class DSBlock : Block
+    public class SFBlock : Block
     {
-        public DSSkill When { get; set; }
+        public byte Loop { get; set; }
         public SkillBlockReference Skill { get; set; }
     }
 }

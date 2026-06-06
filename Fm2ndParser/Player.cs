@@ -6,6 +6,6 @@ namespace Fm2ndParser
     {
         public string Type { get; set; }
         public string Name { get; set; }
-        internal ICollection<Skill> Skills { get; set; }
+        public ICollection<Skill> Skills { get; set; }
     }
 }
