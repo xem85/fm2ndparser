@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Resources;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace Fm2ndParser
@@ -75,6 +76,22 @@ namespace Fm2ndParser
 
                 doParse(player, filename, options.CleanUp, !options.NewFiles, options.ExportResources);
             }
+
+            foreach (var stageName in kgt.Stages)
+            {
+                var filename = Path.Combine(baseDir, stageName + ".stage");
+                var stageParser = new StageParser(filename, kgt);
+                var stage = stageParser.Parse();
+                doParse(stage, filename, options.CleanUp, !options.NewFiles, options.ExportResources);
+            }
+
+            foreach (var demoName in kgt.Demos)
+            {
+                var filename = Path.Combine(baseDir, demoName + ".demo");
+                var demoParser = new DemoParser(filename, kgt);
+                var demo = demoParser.Parse();
+                doParse(demo, filename, options.CleanUp, !options.NewFiles, options.ExportResources);
+            }
         }
 
         private static void doParse(FMFile fmFile, string filename, bool cleanUp, bool overwrite, bool doExportResources)
@@ -106,6 +123,7 @@ namespace Fm2ndParser
                 {
                     concatenateIBlocks(fmFile);
                     contractResolver.AddPropertyToExclude(typeof(ImageResource), "data");
+                    contractResolver.AddPropertyToExclude(typeof(ImageResource), "offset");
                     contractResolver.AddPropertyToExclude(typeof(SoundResource), "data");
                     contractResolver.AddPropertyToExclude(typeof(SkillReference), "number");
                     contractResolver.AddPropertyToExclude(typeof(SkillBlockReference), "number");

@@ -860,9 +860,11 @@ namespace Fm2ndParser
 
             for (int i = 0; i < count; i++)
             {
-                var name = getString(bytes, 0x24, ref offset);
+                var unknown1 = getWord(bytes, 0x4, ref offset);
+                var name = getString(bytes, 0x20, ref offset);
                 var size = getUInt32(bytes, ref offset);
                 var unknown = getUInt16(bytes, ref offset);
+                Debug.Assert(unknown == 0 || unknown == 1 || unknown == 17 || unknown == 18);
 
                 var soundData = size != 0 ? getWord(bytes, (int)size, ref offset).ToArray() : Array.Empty<byte>();
 
@@ -1029,7 +1031,7 @@ namespace Fm2ndParser
             {
                 Number = getUInt16(data, ref offset),
             };
-            if (_kgt.HitJunctions.Count > result.Number)
+            if (_kgt?.HitJunctions.Count > result.Number)
             {
                 result.Name = _kgt.HitJunctions[result.Number];
             }
@@ -1045,7 +1047,7 @@ namespace Fm2ndParser
             {
                 Number = getUInt16(data, ref offset),
             };
-            if (_kgt.CommonImages.Count > result.Number)
+            if (_kgt?.CommonImages.Count > result.Number)
             {
                 result.Name = _kgt.CommonImages[result.Number];
             }
@@ -1205,6 +1207,12 @@ namespace Fm2ndParser
             {
                 Debug.Assert(b == 0);
             }
+        }
+
+        protected void skiRemaningEmptyBytes(Span<byte> bytes, ref int offset)
+        {
+            // the remaning are all 0s
+            skipEmptyBytes(bytes, bytes.Length - offset, ref offset);
         }
     }
 }

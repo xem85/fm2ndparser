@@ -23,12 +23,14 @@ namespace Fm2ndParser
             var player = base.ParseInternal<Player>(bytes, ref offset);
 
             //empty
-            getInt32(bytes, ref offset);
+            skipEmptyBytes(bytes, 4, ref offset);
+
             var commandsCount = getInt32(bytes, ref offset);
             var commandsSkills = readCommands(commandsCount, bytes, ref offset);
             var commandBlocksCount = getInt16(bytes, ref offset);
+            
             // empty skill
-            getWord(bytes, 2, ref offset);
+            skipEmptyBytes(bytes, 2, ref offset);
 
             return player;
         }

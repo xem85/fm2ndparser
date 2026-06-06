@@ -62,8 +62,12 @@ namespace Fm2ndParser
 
             _kgt.SelectionScreen = parseSelectionScreen(bytes, ref offset);
 
+            var unknown2 = getWord(bytes, 0x4, ref offset);
+
+            skiRemaningEmptyBytes(bytes, ref offset);
             return (T)(object)_kgt;
         }
+
 
         private List<string> parseCommonImages(Span<byte> bytes, ref int offset)
         {
@@ -132,9 +136,9 @@ namespace Fm2ndParser
         private List<string> parseDemos(Span<byte> bytes, ref int offset)
         {
             var result = new List<string>();
-            for (int i = 0; i < 200; i++)
+            for (int i = 0; i < 100; i++)
             {
-                var name = getString(bytes, 0x80, ref offset);
+                var name = getString(bytes, 0x100, ref offset);
                 if (!string.IsNullOrEmpty(name))
                     result.Add(name);
             }
