@@ -7,7 +7,8 @@
         public bool TurnX { get; set; }
         public bool TurnY { get; set; }
         public bool Same { get; set; }
-        public ushort CommonImage { get; set; }
+        public SkillReference CommonImage { get; set; }
+
         public short X { get; set; }
         public short Y { get; set; }
     }

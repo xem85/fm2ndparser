@@ -1,12 +1,13 @@
-﻿using System;
-using System.IO;
-using System.Text;
-using System.Linq;
+﻿using CommandLine;
+using CommandLine.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System;
 using System.Collections.Generic;
-using CommandLine;
-using CommandLine.Text;
+using System.IO;
+using System.Linq;
+using System.Resources;
+using System.Text;
 
 namespace Fm2ndParser
 {
@@ -25,7 +26,7 @@ namespace Fm2ndParser
                 }
             }
 
-            [Value(0, Required = true, Hidden = true, HelpText = "Input files to be processed.")]
+            [Value(0, Required = true, Hidden = true, HelpText = "Kgt input file to be processed.")]
             public IEnumerable<string> InputFiles { get; set; }
 
             [Option('n', "new-files",
@@ -37,10 +38,17 @@ namespace Fm2ndParser
               Default = false,
               HelpText = "Merges [I] blocks and does other cleanups for comparison purposes.")]
             public bool CleanUp { get; set; }
+
+            [Option('x', "export-resources",
+              Default = false,
+              HelpText = "Export attached resources.")]
+            public bool ExportResources { get; set; }
         }
 
         static void Main(string[] args)
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             CommandLine.Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(RunOptions)
                 .WithNotParsed(HandleParseError);
@@ -53,19 +61,26 @@ namespace Fm2ndParser
 
         private static void RunOptions(Options options)
         {
-            foreach (var filename in options.InputFiles)
+            var kgtFile = options.InputFiles.Single();
+            var baseDir = Path.GetDirectoryName(kgtFile);
+            var parser = new KGTParser(kgtFile);
+            var kgt = parser.Parse();
+            doParse(kgt, kgtFile, options.CleanUp, !options.NewFiles, options.ExportResources);
+
+            foreach (var character in kgt.Characters)
             {
-                doParse(filename, options.CleanUp, !options.NewFiles);
+                var filename = Path.Combine(baseDir, character + ".player");
+                var playerParser = new PlayerParser(filename, kgt);
+                var player = playerParser.Parse();
+
+                doParse(player, filename, options.CleanUp, !options.NewFiles, options.ExportResources);
             }
         }
 
-        private static void doParse(string filename, bool cleanUp, bool overwrite)
+        private static void doParse(FMFile fmFile, string filename, bool cleanUp, bool overwrite, bool doExportResources)
         {
             try
             {
-                var parser = new PlayerParse(filename);
-                var player = parser.Parse();
-
                 string jsonFilename;
                 if (overwrite)
                 {
@@ -79,26 +94,25 @@ namespace Fm2ndParser
                         throw new Exception("File exists: " + jsonFilename);
                     }
                 }
-
-                exportResources(player, jsonFilename);
+                if (doExportResources)
+                    exportResources(fmFile, jsonFilename);
 
                 var contractResolver = new DynamicContractResolver()
                 {
                     NamingStrategy = new CamelCaseNamingStrategy()
                 };
 
-                contractResolver.AddPropertyToExclude(typeof(PlayerImageResource), "data");
-                contractResolver.AddPropertyToExclude(typeof(PlayerSoundResource), "data");
-                contractResolver.AddPropertyToExclude(typeof(Player), "globalPalettes");
-
                 if (cleanUp)
                 {
-                    concatenateIBlocks(player);
+                    concatenateIBlocks(fmFile);
+                    contractResolver.AddPropertyToExclude(typeof(ImageResource), "data");
+                    contractResolver.AddPropertyToExclude(typeof(SoundResource), "data");
                     contractResolver.AddPropertyToExclude(typeof(SkillReference), "number");
                     contractResolver.AddPropertyToExclude(typeof(SkillBlockReference), "number");
+                    contractResolver.AddPropertyToExclude(typeof(Skill), "index");
                 }
 
-                var json = JsonConvert.SerializeObject(player, new JsonSerializerSettings
+                var json = JsonConvert.SerializeObject(fmFile, new JsonSerializerSettings
                 {
                     ContractResolver = contractResolver,
                     Formatting = Formatting.Indented
@@ -113,9 +127,9 @@ namespace Fm2ndParser
             }
         }
 
-        private static void concatenateIBlocks(Player player)
+        private static void concatenateIBlocks(FMFile fmFile)
         {
-            foreach (var skill in player.Skills)
+            foreach (var skill in fmFile.Skills)
             {
                 var skillBlocks = new List<Block>();
                 IBlock lastI = null;
@@ -159,7 +173,7 @@ namespace Fm2ndParser
             }
         }
 
-        private static void exportResources(Player player, string jsonFilename)
+        private static void exportResources(FMFile fmFile, string jsonFilename)
         {
             var baseName = Path.GetFileNameWithoutExtension(jsonFilename);
             var outputDir = Path.Combine(Path.GetDirectoryName(jsonFilename) ?? string.Empty, baseName);
@@ -170,7 +184,7 @@ namespace Fm2ndParser
             Directory.CreateDirectory(imageDir);
             Directory.CreateDirectory(soundDir);
 
-            if (player.Images != null)
+            if (fmFile.Images != null)
             {
                 var altPaletteDirs = new List<string>();
                 for (int i = 1; i <= 7; i++)
@@ -181,7 +195,7 @@ namespace Fm2ndParser
                 }
 
                 int imageIndex = 0;
-                foreach (var image in player.Images)
+                foreach (var image in fmFile.Images)
                 {
                     var filename = $"{imageIndex:D4}.bmp";
 
@@ -192,13 +206,13 @@ namespace Fm2ndParser
                     }
                     else
                     {
-                        var defaultPalette = getGlobalPalette(player, 0);
+                        var defaultPalette = getGlobalPalette(fmFile, 0);
                         var imagePath = Path.Combine(imageDir, filename);
                         writeIndexedBmp(imagePath, image.Width, image.Height, image.Data, defaultPalette);
 
                         for (int p = 1; p <= 7; p++)
                         {
-                            var altPalette = getGlobalPalette(player, p);
+                            var altPalette = getGlobalPalette(fmFile, p);
                             var altImagePath = Path.Combine(altPaletteDirs[p - 1], filename);
                             writeIndexedBmp(altImagePath, image.Width, image.Height, image.Data, altPalette);
                         }
@@ -208,10 +222,10 @@ namespace Fm2ndParser
                 }
             }
 
-            if (player.Sounds != null)
+            if (fmFile.Sounds != null)
             {
                 int soundIndex = 0;
-                foreach (var sound in player.Sounds)
+                foreach (var sound in fmFile.Sounds)
                 {
                     var soundPath = Path.Combine(soundDir, $"{soundIndex:D4}.wav");
                     File.WriteAllBytes(soundPath, sound.Data ?? Array.Empty<byte>());
@@ -300,14 +314,14 @@ namespace Fm2ndParser
             }
         }
 
-        private static byte[] getGlobalPalette(Player player, int paletteIndex)
+        private static byte[] getGlobalPalette(FMFile fmFile, int paletteIndex)
         {
-            if (player?.GlobalPalettes == null)
+            if (fmFile?.GlobalPalettes == null)
             {
                 return null;
             }
 
-            var palettes = player.GlobalPalettes.ToList();
+            var palettes = fmFile.GlobalPalettes.ToList();
             if (paletteIndex < 0 || paletteIndex >= palettes.Count)
             {
                 return null;

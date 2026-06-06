@@ -2,11 +2,11 @@
 {
     public class RBlock : Block
     {
-        public short HitsStand { get; set; }
-        public short HitsCrouched { get; set; }
-        public short HitsAir { get; set; }
-        public short GuardStand { get; set; }
-        public short GuardCrouched { get; set; }
-        public short GuardAir { get; set; }
+        public SkillReference HitsStand { get; set; }
+        public SkillReference HitsCrouched { get; set; }
+        public SkillReference HitsAir { get; set; }
+        public SkillReference GuardStand { get; set; }
+        public SkillReference GuardCrouched { get; set; }
+        public SkillReference GuardAir { get; set; }
     }
 }
