@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    public class CommandStep
+    public class BlockCommandStep
     {
         public ComDirection Direction { get; set; }
         public bool A { get; set; }

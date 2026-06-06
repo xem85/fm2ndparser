@@ -43,6 +43,7 @@ namespace Fm2ndParser
 
             var screens = parseScreenSelect(bytes, ref offset);
 
+            // these may be unused screen
             skipEmptyBytes(bytes, 2, ref offset);
 
             // base settings
@@ -62,12 +63,25 @@ namespace Fm2ndParser
 
             _kgt.SelectionScreen = parseSelectionScreen(bytes, ref offset);
 
-            var unknown2 = getWord(bytes, 0x4, ref offset);
+            setCharactersSettings(bytes, _kgt.Characters, ref offset);
 
             skiRemaningEmptyBytes(bytes, ref offset);
             return (T)(object)_kgt;
         }
 
+        private void setCharactersSettings(Span<byte> bytes, ICollection<string> characters, ref int offset)
+        {
+            for (int i = 0; i < 50; i++)
+            {
+                var flags = getByte(bytes, ref offset);
+
+                var enabledForStoryMode = isFlagOn(flags, 0);
+                var enabledForVsMode = isFlagOn(flags, 1);
+
+                // todo
+                assertUnusedFlags(flags, 0b11111100);
+            }
+        }
 
         private List<string> parseCommonImages(Span<byte> bytes, ref int offset)
         {

@@ -7,6 +7,6 @@ namespace Fm2ndParser
         public SkillBlockReference Skill { get; set; }
         public byte Time { get; set; }
 
-        public ICollection<CommandStep> Steps { get; set; }
+        public ICollection<BlockCommandStep> Steps { get; set; }
     }
 }

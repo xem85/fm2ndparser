@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Linq;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
 {
@@ -743,7 +746,7 @@ namespace Fm2ndParser
                 Time = getByte(data, ref offset),
             };
 
-            var steps = new List<CommandStep>();
+            var steps = new List<BlockCommandStep>();
             for (int i = 0; i < 5; i++)
             {
                 var step = getCommandStep(data, ref offset);
@@ -772,9 +775,9 @@ namespace Fm2ndParser
             return block;
         }
 
-        protected CommandStep getCommandStep(Span<byte> data, ref int offset)
+        protected BlockCommandStep getCommandStep(Span<byte> data, ref int offset)
         {
-            var step = new CommandStep();
+            var step = new BlockCommandStep();
             byte flags;
             ushort value;
             getSplittedData2(data, ref offset, out flags, out value);
@@ -1099,6 +1102,12 @@ namespace Fm2ndParser
             return word[0];
         }
 
+        protected sbyte getInt8(Span<byte> data, ref int offset)
+        {
+            var result = getByte(data, ref offset);
+            return (sbyte)result;
+        }
+
         protected short getInt16(Span<byte> data, ref int offset)
         {
             var word = getWord(data, 2, ref offset);
@@ -1163,32 +1172,59 @@ namespace Fm2ndParser
             return result;
         }
 
-        protected IList<Command> readCommands(int count, Span<byte> bytes, ref int offset)
+        protected IList<Command> parseCommands(int count, Span<byte> bytes, ref int offset)
         {
             var commands = new List<Command>();
 
             for (int i = 0; i < count; i++)
             {
-                var command = readCommand(bytes, ref offset);
+                var command = parseCommand(bytes, ref offset);
                 commands.Add(command);
             }
 
             return commands;
         }
 
-        protected Command readCommand(Span<byte> bytes, ref int offset)
+        protected Command parseCommand(Span<byte> bytes, ref int offset)
         {
             var result = new Command
             {
                 Name = getString(bytes, 32, ref offset),
-                Time = getInt16(bytes, ref offset),
+                Time = getUInt16(bytes, ref offset),
                 AirSkill = getSkill(bytes, ref offset),
                 StandSkill = getSkill(bytes, ref offset),
                 StandFarSkill = getSkill(bytes, ref offset),
                 CrouchedSkill = getSkill(bytes, ref offset),
             };
 
-            var word = getWord(bytes, 40, ref offset);
+            var steps = new List<CommandStep>();
+            for (int i = 0; i < 10; i++)
+            {
+
+                var flags1 = getByte(bytes, ref offset);
+                var flags2 = getByte(bytes, ref offset);
+
+                var step = new CommandStep()
+                {
+                    A = isFlagOn(flags1, 3),
+                    B = isFlagOn(flags1, 2),
+                    C = isFlagOn(flags1, 1),
+                    D = isFlagOn(flags1, 0),
+                    E = isFlagOn(flags2, 7),
+                    F = isFlagOn(flags2, 6),
+                    Continue = isFlagOn(flags2, 4),
+                    Active = isFlagOn(flags2, 5),
+                    Direction = (ComDirection)(flags1 & 0b00001111),
+                    Type = (CommandStepType)(flags1 & 0b11100000),
+                };
+                steps.Add(step);
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                steps[i].Amount = getUInt16(bytes, ref offset);
+            }
+
+            result.Steps = steps;
 
             return result;
         }
@@ -1202,9 +1238,9 @@ namespace Fm2ndParser
 
         protected void skipEmptyBytes(Span<byte> bytes, int count, ref int offset)
         {
-            var skipped = getWord(bytes, count, ref offset);
-            foreach (var b in skipped)
+            for (int i = 0; i < count; i++)
             {
+                var b = getByte(bytes, ref offset);
                 Debug.Assert(b == 0);
             }
         }
@@ -1213,6 +1249,11 @@ namespace Fm2ndParser
         {
             // the remaning are all 0s
             skipEmptyBytes(bytes, bytes.Length - offset, ref offset);
+        }
+
+        protected void assertUnusedFlags(byte flags, byte bitMask)
+        {
+            Debug.Assert((flags & bitMask) == 0);
         }
     }
 }
