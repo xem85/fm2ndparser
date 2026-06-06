@@ -66,11 +66,30 @@ namespace Fm2ndParser
                 var parser = new PlayerParse(filename);
                 var player = parser.Parse();
 
+                string jsonFilename;
+                if (overwrite)
+                {
+                    jsonFilename = getJsonFilename(filename);
+                }
+                else
+                {
+                    jsonFilename = getFreeJsonFilename(filename);
+                    if (File.Exists(jsonFilename))
+                    {
+                        throw new Exception("File exists: " + jsonFilename);
+                    }
+                }
+
+                exportResources(player, jsonFilename);
+
                 var contractResolver = new DynamicContractResolver()
                 {
                     NamingStrategy = new CamelCaseNamingStrategy()
                 };
 
+                contractResolver.AddPropertyToExclude(typeof(PlayerImageResource), "data");
+                contractResolver.AddPropertyToExclude(typeof(PlayerSoundResource), "data");
+                contractResolver.AddPropertyToExclude(typeof(Player), "globalPalettes");
 
                 if (cleanUp)
                 {
@@ -85,19 +104,6 @@ namespace Fm2ndParser
                     Formatting = Formatting.Indented
                 });
 
-                string jsonFilename;
-                if (overwrite)
-                {
-                    jsonFilename = getJsonFilename(filename);
-                }
-                else
-                {
-                    jsonFilename = getFreeJsonFilename(filename);
-                    if (File.Exists(jsonFilename))
-                    {
-                        throw new Exception("File exists: " + jsonFilename);
-                    }
-                }
                 File.WriteAllText(jsonFilename, json);
             }
             catch (LockedFileException)
@@ -151,6 +157,171 @@ namespace Fm2ndParser
                 }
                 skill.Blocks = skillBlocks;
             }
+        }
+
+        private static void exportResources(Player player, string jsonFilename)
+        {
+            var baseName = Path.GetFileNameWithoutExtension(jsonFilename);
+            var outputDir = Path.Combine(Path.GetDirectoryName(jsonFilename) ?? string.Empty, baseName);
+            Directory.CreateDirectory(outputDir);
+
+            var imageDir = Path.Combine(outputDir, "img");
+            var soundDir = Path.Combine(outputDir, "snd");
+            Directory.CreateDirectory(imageDir);
+            Directory.CreateDirectory(soundDir);
+
+            if (player.Images != null)
+            {
+                var altPaletteDirs = new List<string>();
+                for (int i = 1; i <= 7; i++)
+                {
+                    var dir = Path.Combine(outputDir, i.ToString());
+                    Directory.CreateDirectory(dir);
+                    altPaletteDirs.Add(dir);
+                }
+
+                int imageIndex = 0;
+                foreach (var image in player.Images)
+                {
+                    var filename = $"{imageIndex:D4}.bmp";
+
+                    if (image.PaletteType == 1)
+                    {
+                        var imagePath = Path.Combine(imageDir, filename);
+                        writeIndexedBmp(imagePath, image.Width, image.Height, image.Data, null);
+                    }
+                    else
+                    {
+                        var defaultPalette = getGlobalPalette(player, 0);
+                        var imagePath = Path.Combine(imageDir, filename);
+                        writeIndexedBmp(imagePath, image.Width, image.Height, image.Data, defaultPalette);
+
+                        for (int p = 1; p <= 7; p++)
+                        {
+                            var altPalette = getGlobalPalette(player, p);
+                            var altImagePath = Path.Combine(altPaletteDirs[p - 1], filename);
+                            writeIndexedBmp(altImagePath, image.Width, image.Height, image.Data, altPalette);
+                        }
+                    }
+
+                    imageIndex++;
+                }
+            }
+
+            if (player.Sounds != null)
+            {
+                int soundIndex = 0;
+                foreach (var sound in player.Sounds)
+                {
+                    var soundPath = Path.Combine(soundDir, $"{soundIndex:D4}.wav");
+                    File.WriteAllBytes(soundPath, sound.Data ?? Array.Empty<byte>());
+                    soundIndex++;
+                }
+            }
+        }
+
+        private static void writeIndexedBmp(string outputPath, uint width, uint height, byte[] imageData, byte[] externalPalette)
+        {
+            if (width == 0 || height == 0)
+            {
+                return;
+            }
+
+            if (imageData == null)
+            {
+                return;
+            }
+
+            var pixelSize = checked((int)(width * height));
+            var paletteSize = 1024;
+            var hasEmbeddedPalette = externalPalette == null;
+            var required = hasEmbeddedPalette ? pixelSize + paletteSize : pixelSize;
+            if (imageData.Length < required)
+            {
+                return;
+            }
+
+            byte[] palette;
+            int pixelOffset;
+
+            if (hasEmbeddedPalette)
+            {
+                palette = new byte[paletteSize];
+                Buffer.BlockCopy(imageData, 0, palette, 0, paletteSize);
+                pixelOffset = paletteSize;
+            }
+            else
+            {
+                palette = new byte[paletteSize];
+                if (externalPalette != null)
+                {
+                    Buffer.BlockCopy(externalPalette, 0, palette, 0, Math.Min(paletteSize, externalPalette.Length));
+                }
+                pixelOffset = 0;
+            }
+
+            var rowStride = ((int)width + 3) & ~3;
+            var pixelArraySize = rowStride * (int)height;
+            var fileHeaderSize = 14;
+            var dibHeaderSize = 40;
+            var dataOffset = fileHeaderSize + dibHeaderSize + paletteSize;
+            var fileSize = dataOffset + pixelArraySize;
+
+            using var stream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var writer = new BinaryWriter(stream);
+
+            writer.Write((byte)'B');
+            writer.Write((byte)'M');
+            writer.Write(fileSize);
+            writer.Write((short)0);
+            writer.Write((short)0);
+            writer.Write(dataOffset);
+
+            writer.Write(dibHeaderSize);
+            writer.Write((int)width);
+            writer.Write((int)height);
+            writer.Write((short)1);
+            writer.Write((short)8);
+            writer.Write(0);
+            writer.Write(pixelArraySize);
+            writer.Write(2835);
+            writer.Write(2835);
+            writer.Write(256);
+            writer.Write(256);
+
+            writer.Write(palette);
+
+            var rowBuffer = new byte[rowStride];
+            for (int y = (int)height - 1; y >= 0; y--)
+            {
+                Array.Clear(rowBuffer, 0, rowBuffer.Length);
+                Buffer.BlockCopy(imageData, pixelOffset + y * (int)width, rowBuffer, 0, (int)width);
+                writer.Write(rowBuffer);
+            }
+        }
+
+        private static byte[] getGlobalPalette(Player player, int paletteIndex)
+        {
+            if (player?.GlobalPalettes == null)
+            {
+                return null;
+            }
+
+            var palettes = player.GlobalPalettes.ToList();
+            if (paletteIndex < 0 || paletteIndex >= palettes.Count)
+            {
+                return null;
+            }
+
+            var palette = palettes[paletteIndex];
+            if (palette == null || palette.Length < 0x400)
+            {
+                return null;
+            }
+
+            var bmpPalette = new byte[0x400];
+            Buffer.BlockCopy(palette, 0, bmpPalette, 0, 0x400);
+            return bmpPalette;
         }
 
         private static string getJsonFilename(string filename)

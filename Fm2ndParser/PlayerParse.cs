@@ -35,15 +35,26 @@ namespace Fm2ndParser
 
             var blocksCount = getInt16(bytes, ref offset);
 
+            // empty skill
             getWord(bytes, 2, ref offset);
 
             readSkillsBlocks(blocksCount, bytes, ref offset);
+
+            var imagesCount = getInt32(bytes, ref offset);
+            var images = readImages(bytes, ref offset, imagesCount);
+
+            var palettes = readGlobalPalettes(bytes, ref offset);
+
+            var sounds = readSounds(bytes, ref offset);
 
             var result = new Player
             {
                 Type = type,
                 Name = name,
                 Skills = _skills,
+                Images = images,
+                GlobalPalettes = palettes,
+                Sounds = sounds,
             };
 
             return result;
@@ -757,6 +768,189 @@ namespace Fm2ndParser
 
         #endregion
 
+        private ICollection<PlayerImageResource> readImages(Span<byte> bytes, ref int offset, int imagesCount)
+        {
+            var images = new List<PlayerImageResource>();
+
+            for (int i = 0; i < imagesCount; i++)
+            {
+                var entryOffset = (uint)offset;
+
+                var unknown = getUInt32(bytes, ref offset);
+                var width = getUInt32(bytes, ref offset);
+                var height = getUInt32(bytes, ref offset);
+                var paletteType = getUInt32(bytes, ref offset);
+                var packedSize = getUInt32(bytes, ref offset);
+
+                byte[] imageData = Array.Empty<byte>();
+
+                if (packedSize != 0)
+                {
+                    var packed = getWord(bytes, (int)packedSize, ref offset).ToArray();
+                    var unpackedSize = checked((int)(width * height + (paletteType == 1 ? 0x400u : 0u)));
+                    imageData = extractSprite(packed, unpackedSize);
+                }
+                else if (width != 0 && height != 0)
+                {
+                    var rawSize = checked((int)(width * height + (paletteType == 1 ? 0x400u : 0u)));
+                    imageData = getWord(bytes, rawSize, ref offset).ToArray();
+                }
+
+                images.Add(new PlayerImageResource
+                {
+                    Width = width,
+                    Height = height,
+                    PaletteType = paletteType,
+                    PackedSize = packedSize,
+                    Offset = entryOffset,
+                    Data = imageData,
+                });
+            }
+
+            return images;
+        }
+
+        private ICollection<byte[]> readGlobalPalettes(Span<byte> bytes, ref int offset)
+        {
+            var rawPalettes = getWord(bytes, 0x2100, ref offset).ToArray();
+            var result = new List<byte[]>();
+
+            for (int i = 0; i < 8; i++)
+            {
+                var palette = new byte[0x420];
+                Array.Copy(rawPalettes, i * 0x420, palette, 0, 0x420);
+                result.Add(palette);
+            }
+
+            return result;
+        }
+
+        private ICollection<PlayerSoundResource> readSounds(Span<byte> bytes, ref int offset)
+        {
+            var soundsCount = getInt32(bytes, ref offset);
+            var result = new List<PlayerSoundResource>();
+
+            for (int i = 0; i < soundsCount; i++)
+            {
+                var header = getWord(bytes, 0x2A, ref offset);
+                var name = Encoding.Default.GetString(header.Slice(0, 0x24)).Replace("\0", "").Trim();
+                var size = BitConverter.ToUInt32(header.Slice(0x24, 4).ToArray(), 0);
+                var unknown = BitConverter.ToUInt16(header.Slice(0x28, 2).ToArray(), 0);
+
+                var soundData = size != 0 ? getWord(bytes, (int)size, ref offset).ToArray() : Array.Empty<byte>();
+
+                result.Add(new PlayerSoundResource
+                {
+                    Name = name,
+                    Size = size,
+                    Unknown = unknown,
+                    Data = soundData,
+                });
+            }
+
+            return result;
+        }
+
+        private byte[] extractSprite(byte[] source, int destinationSize)
+        {
+            var destination = new byte[destinationSize];
+
+            var pos = 0;
+            var pos2 = 0;
+
+            while (pos < source.Length && pos2 < destinationSize)
+            {
+                uint tmp = source[pos];
+                var tmp2 = tmp >> 6;
+                tmp = tmp & 0x3f;
+
+                if (tmp == 0)
+                {
+                    pos = pos + 1;
+                    if (pos >= source.Length)
+                        break;
+
+                    tmp = source[pos];
+                    if (tmp != 0)
+                    {
+                        tmp = tmp + 0x3f;
+                    }
+                    else
+                    {
+                        if (pos + 3 >= source.Length)
+                            break;
+
+                        tmp = BitConverter.ToUInt16(source, pos + 1);
+                        var tmp3 = (uint)(source[pos + 3] << 0x10);
+                        tmp = tmp + tmp3 + 0x13f;
+                        pos = pos + 3;
+                    }
+                }
+
+                switch (tmp2)
+                {
+                    case 0:
+                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
+                        {
+                            destination[pos2++] = 0;
+                        }
+                        break;
+
+                    case 1:
+                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
+                        {
+                            pos = pos + 1;
+                            if (pos >= source.Length)
+                                break;
+
+                            destination[pos2++] = source[pos];
+                        }
+                        break;
+
+                    case 2:
+                        pos = pos + 1;
+                        if (pos >= source.Length)
+                            break;
+
+                        var repeatedByte = source[pos];
+                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
+                        {
+                            destination[pos2++] = repeatedByte;
+                        }
+                        break;
+
+                    case 3:
+                        pos = pos + 1;
+                        if (pos >= source.Length)
+                            break;
+
+                        var copyDistance = (int)source[pos];
+                        if (copyDistance == 0)
+                        {
+                            pos = pos + 1;
+                            if (pos >= source.Length)
+                                break;
+
+                            copyDistance = (source[pos] + 1) << 8;
+                            pos = pos + 1;
+                        }
+
+                        var readPos = pos2 - copyDistance;
+                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
+                        {
+                            if (readPos < 0 || readPos >= destinationSize)
+                                break;
+
+                            destination[pos2++] = destination[readPos++];
+                        }
+                        break;
+                }
+
+                pos = pos + 1;
+            }
+
+            return destination;
+        }
 
         private SkillReference getSkill(Span<byte> data, ref int offset)
         {
@@ -843,6 +1037,12 @@ namespace Fm2ndParser
         {
             var word = getWord(data, 4, ref offset);
             return BitConverter.ToInt32(word);
+        }
+
+        private uint getUInt32(Span<byte> data, ref int offset)
+        {
+            var word = getWord(data, 4, ref offset);
+            return BitConverter.ToUInt32(word);
         }
 
         private IList<Skill> readSkills(Span<byte> bytes, ref int offset)
