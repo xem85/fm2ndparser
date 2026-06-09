@@ -36,6 +36,8 @@ Parse a project starting from `.kgt`:
 Fm2ndParser game.kgt
 ```
 
+> ⚠️ Use this tool at your own risk. The author is not responsible for any damage or data loss.
+
 Useful options:
 
 - `--clean-up` (`-c`): cleaner JSON for comparison
