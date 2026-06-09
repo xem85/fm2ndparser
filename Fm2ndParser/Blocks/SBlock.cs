@@ -2,6 +2,6 @@
 {
     public class SBlock : Block
     {
-        public short Sound { get; set; }
+        public SkillReference Sound { get; set; }
     }
 }

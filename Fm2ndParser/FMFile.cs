@@ -7,15 +7,10 @@ namespace Fm2ndParser
         public string Type { get; set; }
         public string Name { get; set; }
         public ICollection<Skill> Skills { get; set; }
-        public ICollection<byte[]> MovementEntries { get; set; }
-        public ICollection<byte[]> ChoiceEntries { get; set; }
         public ICollection<ImageResource> Images { get; set; }
         public ICollection<byte[]> GlobalPalettes { get; set; }
         public ICollection<SoundResource> Sounds { get; set; }
-        public IList<Command> Commands { get; set; }
-        public PlayerSettings Settings { get; set; }
-        public StoryMode StoryMode { get; internal set; }
-        internal ICollection<CpuCommand> Cpu { get; set; }
+        public SkillReference BGM { get; internal set; }
     }
 
     public class ImageResource
@@ -32,7 +27,9 @@ namespace Fm2ndParser
     {
         public string Name { get; set; }
         public uint Size { get; set; }
-        public ushort Unknown { get; set; }
         public byte[] Data { get; set; }
+        public bool EndlessLoop { get; set; }
+        public byte CDDATrack { get; set; }
+        public SoundType Type { get; set; }
     }
 }

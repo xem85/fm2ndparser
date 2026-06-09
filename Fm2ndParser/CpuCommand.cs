@@ -2,7 +2,7 @@
 
 namespace Fm2ndParser
 {
-    internal class CpuCommand
+    public class CpuCommand
     {
         public string Name { get; set; }
         public byte Probability { get; set; }

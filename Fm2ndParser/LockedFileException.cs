@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace Fm2ndParser
 {
     [Serializable]
-    internal class LockedFileException : Exception
+    class LockedFileException : Exception
     {
         public LockedFileException()
         {

@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class ScreenSelect
+    class ScreenSelect
     {
         public byte TitleScreen { get; set; }
         public byte P1vsCPU { get; set; }

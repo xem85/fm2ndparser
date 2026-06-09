@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class StoryEntryFight : StoryEntry
+    class StoryEntryFight : StoryEntry
     {
         public SkillReference Stage { get; set; }
         public byte NumbOfRounds { get; set; }

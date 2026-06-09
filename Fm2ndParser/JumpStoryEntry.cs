@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class JumpStoryEntry : StoryEntry
+    class JumpStoryEntry : StoryEntry
     {
         public StoryEntryJump If { get; set; }
         public byte Value { get; set; }

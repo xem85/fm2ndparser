@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
@@ -51,6 +52,8 @@ namespace Fm2ndParser
             var palettes = readGlobalPalettes(bytes, ref offset);
 
             var sounds = readSounds(bytes, ref offset);
+
+            setSoundBlockNames(sounds);
 
             var result = new T
             {
@@ -257,13 +260,18 @@ namespace Fm2ndParser
 
         protected Block parseSBlock(Span<byte> data, ref int offset)
         {
-            getByte(data, ref offset);
+            var unknown = getByte(data, ref offset);
+            var sound = getUInt16(data, ref offset);
+
             var block = new SBlock
             {
                 // 3
                 Type = "S",
                 Data = data.ToArray(),
-                Sound = getInt16(data, ref offset),
+                Sound = new SkillReference
+                {
+                    Number = sound,
+                },
             };
 
             return block;
@@ -863,11 +871,16 @@ namespace Fm2ndParser
 
             for (int i = 0; i < count; i++)
             {
-                var unknown1 = getWord(bytes, 0x4, ref offset);
+                var unknown = getWord(bytes, 0x4, ref offset);
                 var name = getString(bytes, 0x20, ref offset);
                 var size = getUInt32(bytes, ref offset);
-                var unknown = getUInt16(bytes, ref offset);
-                Debug.Assert(unknown == 0 || unknown == 1 || unknown == 17 || unknown == 18);
+                var flags = getByte(bytes, ref offset);
+                assertUnusedFlags(flags, 0b11101100);
+
+                var endlessLoop = isFlagOn(flags, 5);
+                var type = (SoundType)(flags & 0b00000011);
+
+                var cddaTrack = getByte(bytes, ref offset);
 
                 var soundData = size != 0 ? getWord(bytes, (int)size, ref offset).ToArray() : Array.Empty<byte>();
 
@@ -875,7 +888,9 @@ namespace Fm2ndParser
                 {
                     Name = name,
                     Size = size,
-                    Unknown = unknown,
+                    Type = type,
+                    EndlessLoop = endlessLoop,
+                    CDDATrack = cddaTrack,
                     Data = soundData,
                 });
             }
@@ -1011,6 +1026,15 @@ namespace Fm2ndParser
                 Console.WriteLine($"Parse Error. Skill {result.Number} not found");
             }
             return result;
+        }
+
+        private void setSoundBlockNames(ICollection<SoundResource> sounds)
+        {
+            foreach (var sBlock in _skills.SelectMany(x => x.Blocks).Where(x => x is SBlock).Cast<SBlock>())
+            {
+                var sound = sBlock.Sound;
+                sound.Name = sounds.Skip(sound.Number).First().Name;
+            }
         }
 
         private void setSkillBlockTypes()
@@ -1172,8 +1196,10 @@ namespace Fm2ndParser
             return result;
         }
 
-        protected IList<Command> parseCommands(int count, Span<byte> bytes, ref int offset)
+        protected IList<Command> parseCommands(Span<byte> bytes, ref int offset)
         {
+            var count = getInt32(bytes, ref offset);
+
             var commands = new List<Command>();
 
             for (int i = 0; i < count; i++)

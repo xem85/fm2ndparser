@@ -5,6 +5,7 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
@@ -21,28 +22,26 @@ namespace Fm2ndParser
             return base.parse<Player>();
         }
 
-        protected override Player ParseInternal<Player>(Span<byte> bytes, ref int offset)
+        protected override T ParseInternal<T>(Span<byte> bytes, ref int offset)
         {
             var player = base.ParseInternal<Player>(bytes, ref offset);
 
             //empty
             skipEmptyBytes(bytes, 4, ref offset);
 
-            var commandsCount = getInt32(bytes, ref offset);
-            player.Commands = parseCommands(commandsCount, bytes, ref offset);
+            player.Commands = parseCommands(bytes, ref offset);
 
-            var unknown = getUInt32(bytes, ref offset);
-            Debug.Assert(unknown == 13);
-            skipEmptyBytes(bytes, 4, ref offset);
-            skipNumberSequenceUInt32(bytes, 25, 36, ref offset);
-            skipEmptyBytes(bytes, 14, ref offset);
+            player.HitJunctionsSkills = parseHitJunctionsSkills(bytes, ref offset);
+
+            player.CommonImages = parseCommonImages(bytes, ref offset);
+
+            skipEmptyBytes(bytes, 10, ref offset);
 
             player.Cpu = parseCpus(bytes, player.Commands, ref offset);
 
+            // todo unknown
             skipNumberSequenceUInt16(bytes, 1, 24, ref offset);
-
             skipEmptyBytes(bytes, 0x26, ref offset);
-
 
             player.Settings = parsePlayerSettings(bytes, ref offset);
 
@@ -50,8 +49,43 @@ namespace Fm2ndParser
 
             skiRemaningEmptyBytes(bytes, ref offset);
 
+            return (T)(object)player;
+        }
 
-            return player;
+        private ICollection<HitJunctionSkills> parseHitJunctionsSkills(Span<byte> bytes, ref int offset)
+        {
+            var hitJunctionsCount = getUInt32(bytes, ref offset);
+            var result = new List<HitJunctionSkills>();
+            for (int i = 0; i < hitJunctionsCount; i++)
+            {
+                var hitJunction = new HitJunctionSkills
+                {
+                    HitJunction = getSkill(bytes, ref offset),
+                    Spark = getSkill(bytes, ref offset),
+                };
+                result.Add(hitJunction);
+            }
+
+            return result;
+        }
+
+        private ICollection<CommonImage> parseCommonImages(Span<byte> bytes, ref int offset)
+        {
+            var count = getUInt32(bytes, ref offset);
+
+            var result = new List<CommonImage>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var commonImage = new CommonImage
+                {
+                    Number = getUInt16(bytes, ref offset),
+                    X = getInt16(bytes, ref offset),
+                    Y = getInt16(bytes, ref offset),
+                };
+                result.Add(commonImage);
+            }
+            return result;
         }
 
         private StoryMode parseStoryMode(Span<byte> bytes, ref int offset)
@@ -345,9 +379,16 @@ namespace Fm2ndParser
             var list = new List<CpuCommand>();
             for (int i = 0; i < 100; i++)
             {
+                var name = getString(bytes, 0x20, ref offset);
+                if (name == string.Empty)
+                {
+                    getWord(bytes, 0x4F, ref offset);
+                    continue;
+                }
+
                 var cpu = new CpuCommand
                 {
-                    Name = getString(bytes, 0x20, ref offset),
+                    Name = name,
                 };
                 var airFlag = getByte(bytes, ref offset);
                 var characterInAir = isFlagOn(airFlag, 0);
@@ -396,14 +437,6 @@ namespace Fm2ndParser
             return list;
         }
 
-        private void skipNumberSequenceUInt32(Span<byte> bytes, int from, int to, ref int offset)
-        {
-            for (int i = from; i < to + 1; i++)
-            {
-                var unknown = getUInt32(bytes, ref offset);
-                Debug.Assert(unknown == i);
-            }
-        }
         private void skipNumberSequenceUInt16(Span<byte> bytes, int from, int to, ref int offset)
         {
             for (int i = from; i < to + 1; i++)

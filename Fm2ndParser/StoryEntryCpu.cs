@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser
 {
-    internal class StoryEntryCpu
+    class StoryEntryCpu
     {
         public bool ShowLife { get; set; }
         public bool CpuIgnoresPlayer { get; set; }

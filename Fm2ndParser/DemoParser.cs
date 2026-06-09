@@ -23,9 +23,19 @@ namespace Fm2ndParser
         {
             var demo = base.ParseInternal<Demo>(bytes, ref offset);
 
-            //empty
-            getInt32(bytes, ref offset);
-            var unknown = getInt32(bytes, ref offset);
+            skipEmptyBytes(bytes, 4, ref offset);
+            var bgm = getUInt16(bytes, ref offset);
+            demo.BGM = new SkillReference
+            {
+                Number = bgm,
+                Name = demo.Sounds.Skip(bgm).First().Name,
+            };
+            var skipWithInput = Convert.ToBoolean(getInt16(bytes, ref offset));
+            skipEmptyBytes(bytes, 1, ref offset);
+            var time = getUInt32(bytes, ref offset);
+
+
+
             skiRemaningEmptyBytes(bytes, ref offset);
             return demo;
         }
