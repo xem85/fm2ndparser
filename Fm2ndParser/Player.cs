@@ -10,5 +10,6 @@ namespace Fm2ndParser
         public ICollection<CommonImage> CommonImages { get; set; }
         public ICollection<CpuCommand> Cpu { get; set; }
         public ICollection<HitJunctionSkills> HitJunctionsSkills { get; set; }
+        public PlayerBuiltInSkills BuiltInSkills { get; set; }
     }
 }

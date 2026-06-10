@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
 {
@@ -36,7 +36,10 @@ namespace Fm2ndParser
 
         protected virtual T ParseInternal<T>(Span<byte> bytes, ref int offset) where T : FMFile, new()
         {
-            var type = getString(bytes, 16, ref offset);
+            var type = getString(bytes, 12, ref offset);
+            var loadedFlags = getUInt32(bytes, ref offset);
+            var loaded = loadedFlags == 1;
+
             if (type.StartsWith("2DKGT2G"))
                 throw new LockedFileException();
 
@@ -817,7 +820,7 @@ namespace Fm2ndParser
             {
                 var entryOffset = (uint)offset;
 
-                var unknown = getUInt32(bytes, ref offset);
+                var pointer = getWord(bytes, 0x4, ref offset);
                 var width = getUInt32(bytes, ref offset);
                 var height = getUInt32(bytes, ref offset);
                 var paletteType = getUInt32(bytes, ref offset); // 0: common, 1: private
@@ -839,6 +842,7 @@ namespace Fm2ndParser
 
                 images.Add(new ImageResource
                 {
+                    Pointer = pointer.ToArray(),
                     Width = width,
                     Height = height,
                     PaletteType = paletteType,
@@ -871,7 +875,7 @@ namespace Fm2ndParser
 
             for (int i = 0; i < count; i++)
             {
-                var unknown = getWord(bytes, 0x4, ref offset);
+                var pointer = getWord(bytes, 0x4, ref offset);
                 var name = getString(bytes, 0x20, ref offset);
                 var size = getUInt32(bytes, ref offset);
                 var flags = getByte(bytes, ref offset);
@@ -886,6 +890,7 @@ namespace Fm2ndParser
 
                 result.Add(new SoundResource
                 {
+                    Pointer = pointer.ToArray(),
                     Name = name,
                     Size = size,
                     Type = type,

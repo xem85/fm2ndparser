@@ -21,6 +21,7 @@ namespace Fm2ndParser
         public uint PackedSize { get; set; }
         public uint Offset { get; set; }
         public byte[] Data { get; set; }
+        public byte[] Pointer { get; set; }
     }
 
     public class SoundResource
@@ -31,5 +32,6 @@ namespace Fm2ndParser
         public bool EndlessLoop { get; set; }
         public byte CDDATrack { get; set; }
         public SoundType Type { get; set; }
+        public byte[] Pointer { get; set; }
     }
 }

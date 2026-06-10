@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
@@ -6,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
 {
@@ -39,8 +39,8 @@ namespace Fm2ndParser
 
             player.Cpu = parseCpus(bytes, player.Commands, ref offset);
 
-            // todo unknown
-            skipNumberSequenceUInt16(bytes, 1, 24, ref offset);
+            player.BuiltInSkills = parseDefaultSkillsIndex(bytes, ref offset);
+ 
             skipEmptyBytes(bytes, 0x26, ref offset);
 
             player.Settings = parsePlayerSettings(bytes, ref offset);
@@ -437,13 +437,61 @@ namespace Fm2ndParser
             return list;
         }
 
-        private void skipNumberSequenceUInt16(Span<byte> bytes, int from, int to, ref int offset)
+        private PlayerBuiltInSkills parseDefaultSkillsIndex(Span<byte> bytes, ref int offset)
         {
-            for (int i = from; i < to + 1; i++)
+            var shSkillIdxStanding = getUInt16(bytes, ref offset);
+            var shSkillIdxForward = getUInt16(bytes, ref offset);
+            var shSkillIdxBackward = getUInt16(bytes, ref offset);
+            var shSkillIdxJumpUp = getUInt16(bytes, ref offset);
+            var shSkillIdxFrontJump = getUInt16(bytes, ref offset);
+            var shSkillIdxBackJump = getUInt16(bytes, ref offset);
+            var shSkillIdxFalling = getUInt16(bytes, ref offset);
+            var shSkillIdxMidCrouch = getUInt16(bytes, ref offset);
+            var shSkillIdxCrouching = getUInt16(bytes, ref offset);
+            var shSkillIdxStandFromCrouch = getUInt16(bytes, ref offset);
+            var shSkillIdxCrouchAdvance = getUInt16(bytes, ref offset);
+            var shSkillIdxCrouchRetreat = getUInt16(bytes, ref offset);
+            var shSkillIdxTurnStanding = getUInt16(bytes, ref offset);
+            var shSkillIdxTurnCrouching = getUInt16(bytes, ref offset);
+            var shSkillIdxButtonGuardStand = getUInt16(bytes, ref offset);
+            var shSkillIdxButtonGuardCrouch = getUInt16(bytes, ref offset);
+            var shSkillIdxButtonGuardAir = getUInt16(bytes, ref offset);
+            var shSkillIdxStart = getUInt16(bytes, ref offset);
+            var shSkillIdxVictory = getUInt16(bytes, ref offset);
+            var shSkillIdxLoss = getUInt16(bytes, ref offset);
+            var shSkillIdxDraw = getUInt16(bytes, ref offset);
+            var shSkillIdxCharSelectPic = getUInt16(bytes, ref offset);
+            var shSkillIdxStageFacePic = getUInt16(bytes, ref offset);
+            var shSkillIdxRI = getUInt16(bytes, ref offset);
+
+            var result = new PlayerBuiltInSkills
             {
-                var unknown = getUInt16(bytes, ref offset);
-                Debug.Assert(unknown == i);
-            }
+                Standing = shSkillIdxStanding,
+                Forward = shSkillIdxForward,
+                Backward = shSkillIdxBackward,
+                JumpUp = shSkillIdxJumpUp,
+                FrontJump = shSkillIdxFrontJump,
+                BackJump = shSkillIdxBackJump,
+                Falling = shSkillIdxFalling,
+                MidCrouch = shSkillIdxMidCrouch,
+                Crouching = shSkillIdxCrouching,
+                StandFromCrouch = shSkillIdxStandFromCrouch,
+                CrouchAdvance = shSkillIdxCrouchAdvance,
+                CrouchRetreat = shSkillIdxCrouchRetreat,
+                TurnStanding = shSkillIdxTurnStanding,
+                TurnCrouching = shSkillIdxTurnCrouching,
+                ButtonGuardStand = shSkillIdxButtonGuardStand,
+                ButtonGuardCrouch = shSkillIdxButtonGuardCrouch,
+                ButtonGuardAir = shSkillIdxButtonGuardAir,
+                Start = shSkillIdxStart,
+                Victory = shSkillIdxVictory,
+                Loss = shSkillIdxLoss,
+                Draw = shSkillIdxDraw,
+                CharSelectPic = shSkillIdxCharSelectPic,
+                StageFacePic = shSkillIdxStageFacePic,
+                RI = shSkillIdxRI,
+            };
+            return result;
         }
     }
 }

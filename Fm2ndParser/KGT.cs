@@ -11,5 +11,6 @@ namespace Fm2ndParser
         public List<string> Demos { get; set; }
         public SelectionScreenSettings SelectionScreen { get; set; }
         public BaseSettings BaseSettings { get; set; }
+        public KGTBuiltInSkills BuiltInSkills { get; set; }
     }
 }
