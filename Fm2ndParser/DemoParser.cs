@@ -30,10 +30,10 @@ namespace Fm2ndParser
                 Number = bgm,
                 Name = demo.Sounds.Skip(bgm).First().Name,
             };
-            var skipWithInput = Convert.ToBoolean(getInt16(bytes, ref offset));
+            var skipWithInput = Convert.ToBoolean(getUInt16(bytes, ref offset));
             skipEmptyBytes(bytes, 1, ref offset);
             var time = getUInt32(bytes, ref offset);
-
+            demo.Time = time;
 
 
             skiRemaningEmptyBytes(bytes, ref offset);
