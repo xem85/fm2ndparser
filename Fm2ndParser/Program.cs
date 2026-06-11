@@ -1,5 +1,7 @@
 ﻿using CommandLine;
 using CommandLine.Text;
+using Fm2ndParser.Common;
+using Fm2ndParser.Parsers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;

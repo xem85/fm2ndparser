@@ -1,0 +1,17 @@
+﻿using Fm2ndParser.Common;
+using System.Collections.Generic;
+
+namespace Fm2ndParser.Kgt
+{
+    public class KGT : FMFile
+    {
+        public ICollection<string> Characters { get; set; }
+        public List<string> HitJunctions { get; set; }
+        public List<string> CommonImages { get; set; }
+        public List<string> Stages { get; set; }
+        public List<string> Demos { get; set; }
+        public SelectionScreenSettings SelectionScreen { get; set; }
+        public BaseSettings BaseSettings { get; set; }
+        public KGTBuiltInSkills BuiltInSkills { get; set; }
+    }
+}

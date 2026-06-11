@@ -1,4 +1,7 @@
-﻿namespace Fm2ndParser
+﻿using Fm2ndParser.Common;
+using Fm2ndParser.Kgt;
+
+namespace Fm2ndParser
 {
     public class SettingsBlock : Block
     {
