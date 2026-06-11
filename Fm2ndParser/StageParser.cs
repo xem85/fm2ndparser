@@ -19,9 +19,16 @@ namespace Fm2ndParser
             return base.parse<Stage>();
         }
 
+        protected override SettingsType getSettingsType(uint skillIdx)
+        {
+            return SettingsType.Stage;
+        }
+
         protected override Stage ParseInternal<Stage>(Span<byte> bytes, ref int offset)
         {
             var stage = base.ParseInternal<Stage>(bytes, ref offset);
+
+            setSettingsBlocksData();
 
             skipEmptyBytes(bytes, 4, ref offset);
 

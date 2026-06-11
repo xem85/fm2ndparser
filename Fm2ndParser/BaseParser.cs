@@ -8,10 +8,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser
 {
-    public class BaseParser
+    public abstract class BaseParser
     {
         protected string _filename;
         protected KGT _kgt;
@@ -102,58 +103,88 @@ namespace Fm2ndParser
 
                 foreach (var blockData in blocksData.Skip(skill.Position).Take(skillBlocksCount))
                 {
-                    // todo, the settings can be simpli parsed as a block (?)
-                    if (!skill.Blocks.Any())
-                    {
-                        var settingsBlock = parseSkillSettings(blockData);
-                        settingsBlock.Index = skill.Blocks.Count();
-                        skill.Blocks.Add(settingsBlock);
-                    }
-                    else
-                    {
-                        var block = parseBlock(blockData);
-                        block.Index = skill.Blocks.Count();
-                        skill.Blocks.Add(block);
-                    }
+                    var block = parseBlock(blockData);
+                    block.Index = skill.Blocks.Count();
+                    skill.Blocks.Add(block);
                 }
             }
         }
 
-        protected Settings parseSkillSettings(Span<byte> data)
+        protected SettingsBlock parseSettingsBlock(Span<byte> data)
         {
             var offset = 0;
-
-            // 0: user
-            // 1: none / cursor
-            // 3: cursor position
-            // 9: stage layout / life, special bars
-            // 97: hit mark
-            // 33: default
-            // 57: timed
-            // 65: time number
-            // 129: special bar
-            // 193: vitory mark
-            // 131: Position: timer
-            // 195: Pos: p1 Icon
-            // 259: Pos: p2 Icon
-            // 323: Pos: Special Stock 1P
-            // 387: Pos: Special Stock 2P
-            // 451: Pos: Victory Mark 1P
-            // 515: Pos: Victory Mark 2P
-
             var type = getByte(data, ref offset);
 
-            var unk = getByte(data, ref offset);
 
-            var level = getByte(data, ref offset);
-
-            var result = new Settings
+            var result = new SettingsBlock
             {
                 Data = data.ToArray(),
                 Type = "Settings",
-                Level = level,
             };
             return result;
+        }
+
+        protected void setSettingsBlocksData()
+        {
+            foreach (var skill in _skills)
+            {
+                // should always be the first block, but just in case
+                var settinsBlock = skill.Blocks.FirstOrDefault(x => x is SettingsBlock) as SettingsBlock;
+                if (settinsBlock != null)
+                    setSettingsBlockData(settinsBlock, getSettingsType((uint)skill.Index));
+            }
+        }
+
+        protected void setSettingsBlockData(SettingsBlock settings, SettingsType settingsType)
+        {
+            var data = settings.Data;
+            var offset = 0;
+            var type = getByte(data, ref offset);
+
+            settings.SettingsType = settingsType;
+
+            if (settingsType == SettingsType.None)
+            {
+            }
+            else if (settingsType == SettingsType.HitMark)
+            {
+                settings.Position = (HitMarkPosition)getByte(data, ref offset);
+                settings.NumberWidth = getByte(data, ref offset);
+            }
+            else if (settingsType == SettingsType.Time)
+            {
+                settings.Time = getUInt32(data, ref offset);
+            }
+            else if (settingsType == SettingsType.Position)
+            {
+                settings.X = getInt16(data, ref offset);
+                settings.Y = getInt16(data, ref offset);
+                settings.Width = getByte(data, ref offset);
+            }
+            else if (settingsType == SettingsType.MarkPosition)
+            {
+                settings.X = getInt16(data, ref offset);
+                settings.Y = getInt16(data, ref offset);
+                settings.Width = getInt8(data, ref offset);
+                settings.Height = getInt8(data, ref offset);
+            }
+            else if (settingsType == SettingsType.Character)
+            {
+                skipEmptyBytes(data, 1, ref offset);
+                settings.Level = getByte(data, ref offset);
+            }
+            else if (settingsType == SettingsType.Stage)
+            {
+                // todo verify
+                var flags = getByte(data, ref offset);
+                settings.ConnectLtRt = isFlagOn(flags, 1);
+                settings.ConnectUpDw = isFlagOn(flags, 2);
+                settings.WidthEnabled = isFlagOn(flags, 3);
+                settings.HeightEnabled = isFlagOn(flags, 4);
+                settings.Width = getInt16(data, ref offset);
+                settings.Height = getInt16(data, ref offset);
+            }
+
         }
 
         protected Block parseBlock(Span<byte> data)
@@ -164,7 +195,7 @@ namespace Fm2ndParser
             switch (type)
             {
                 case 0:
-                    return null;
+                    return parseSettingsBlock(data);
                 case 1:
                     return parseMBlock(data, ref offset);
                 case 2:
@@ -225,6 +256,7 @@ namespace Fm2ndParser
             }
         }
 
+        protected abstract SettingsType getSettingsType(uint skillIdx);
 
         #region Blocks Parsing
         protected Block parseMBlock(Span<byte> data, ref int offset)

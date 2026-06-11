@@ -26,6 +26,8 @@ namespace Fm2ndParser
         {
             var player = base.ParseInternal<Player>(bytes, ref offset);
 
+            setSettingsBlocksData();
+
             //empty
             skipEmptyBytes(bytes, 4, ref offset);
 
@@ -40,7 +42,7 @@ namespace Fm2ndParser
             player.Cpu = parseCpus(bytes, player.Commands, ref offset);
 
             player.BuiltInSkills = parseDefaultSkillsIndex(bytes, ref offset);
- 
+
             skipEmptyBytes(bytes, 0x26, ref offset);
 
             player.Settings = parsePlayerSettings(bytes, ref offset);
@@ -492,6 +494,11 @@ namespace Fm2ndParser
                 RI = shSkillIdxRI,
             };
             return result;
+        }
+
+        protected override SettingsType getSettingsType(uint skillIdx)
+        {
+            return SettingsType.Character;
         }
     }
 }

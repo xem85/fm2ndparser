@@ -59,6 +59,8 @@ namespace Fm2ndParser
 
             _kgt.BuiltInSkills = parseBuiltInSkills(bytes, ref offset);
 
+            setSettingsBlocksData();
+
             skipEmptyBytes(bytes, 0x38, ref offset);
 
             _kgt.SelectionScreen = parseSelectionScreen(bytes, ref offset);
@@ -415,6 +417,67 @@ namespace Fm2ndParser
             }
 
             return result;
+        }
+
+        protected override SettingsType getSettingsType(uint skillIdx)
+        {
+            if (skillIdx == _kgt.BuiltInSkills.HitLetterHit)
+                return SettingsType.HitMark;
+
+            var timeSkills = new List<uint>
+            {
+                _kgt.BuiltInSkills.RoundAniStarttime,
+                _kgt.BuiltInSkills.RoundAniEndtime,
+                _kgt.BuiltInSkills.Round1,
+                _kgt.BuiltInSkills.Round2,
+                _kgt.BuiltInSkills.Round3,
+                _kgt.BuiltInSkills.Round4,
+                _kgt.BuiltInSkills.Round5,
+                _kgt.BuiltInSkills.Round6,
+                _kgt.BuiltInSkills.Round7,
+                _kgt.BuiltInSkills.Round8,
+                _kgt.BuiltInSkills.Round9,
+                _kgt.BuiltInSkills.RoundFinal,
+                _kgt.BuiltInSkills.Spirits,
+                _kgt.BuiltInSkills.KO,
+                _kgt.BuiltInSkills.Perfect,
+                _kgt.BuiltInSkills.YouWin,
+                _kgt.BuiltInSkills.YouLose,
+                _kgt.BuiltInSkills.P1Wins,
+                _kgt.BuiltInSkills.P2Wins,
+                _kgt.BuiltInSkills.Draw,
+                _kgt.BuiltInSkills.DoubleKo,
+            };
+
+            if (timeSkills.Contains(skillIdx))
+                return SettingsType.Time;
+
+            var positionSkills = new List<uint>
+            {
+                _kgt.BuiltInSkills.PositionTimer,
+                _kgt.BuiltInSkills.Pos1pFace,
+                _kgt.BuiltInSkills.Pos2pFace,
+                _kgt.BuiltInSkills.PosSpecialStock1p,
+                _kgt.BuiltInSkills.PosSpecialStock2p,
+                _kgt.BuiltInSkills.PositionForStoryMode,
+                _kgt.BuiltInSkills.PositionForVsMode,
+                _kgt.BuiltInSkills.PositionCursorItDoes,
+                _kgt.BuiltInSkills.PositionCursorItDoesNot,
+                _kgt.BuiltInSkills.PosCursorForTeamBattle,
+            };
+
+            if (positionSkills.Contains(skillIdx))
+                return SettingsType.Position;
+
+            var markSkills = new List<uint>
+            {
+                _kgt.BuiltInSkills.PosVictoryMark1p,
+                _kgt.BuiltInSkills.VPosVictoryMark2p,
+            };
+            if (markSkills.Contains(skillIdx))
+                return SettingsType.MarkPosition;
+
+            return SettingsType.None;
         }
     }
 }

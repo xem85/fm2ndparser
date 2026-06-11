@@ -12,9 +12,9 @@ namespace Fm2ndParser
         [JsonIgnore]
         // block index
         public ushort Position { get; set; }
-        public Settings Settings
+        public SettingsBlock Settings
         {
-            get { return Blocks.FirstOrDefault() as Settings; }
+            get { return Blocks.FirstOrDefault() as SettingsBlock; }
         }
         public ICollection<Block> Blocks { get; set; } = new List<Block>();
     }

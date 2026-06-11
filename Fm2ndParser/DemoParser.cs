@@ -19,9 +19,12 @@ namespace Fm2ndParser
             return base.parse<Demo>();
         }
 
+
         protected override Demo ParseInternal<Demo>(Span<byte> bytes, ref int offset)
         {
             var demo = base.ParseInternal<Demo>(bytes, ref offset);
+
+            setSettingsBlocksData();
 
             skipEmptyBytes(bytes, 4, ref offset);
             var bgm = getUInt16(bytes, ref offset);
@@ -38,6 +41,10 @@ namespace Fm2ndParser
 
             skiRemaningEmptyBytes(bytes, ref offset);
             return demo;
+        }
+        protected override SettingsType getSettingsType(uint skillIdx)
+        {
+            return SettingsType.None;
         }
     }
 }
