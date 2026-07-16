@@ -50,20 +50,50 @@ namespace Fm2ndParser
 
     public class ParseCommand
     {
-        private string kgtFile;
+        private string inputFile;
         private bool cleanUp;
         private bool overwrite;
         private bool doExportResources;
 
-        public ParseCommand(string kgtFile, bool cleanUp, bool newFile, bool doExportResources)
+        public ParseCommand(string inputFile, bool cleanUp, bool newFile, bool doExportResources)
         {
-            this.kgtFile = kgtFile;
+            this.inputFile = inputFile;
             this.cleanUp = cleanUp;
             this.overwrite = !newFile;
             this.doExportResources = doExportResources;
         }
 
         public async Task Execute()
+        {
+            var extension = Path.GetExtension(inputFile).ToLowerInvariant();
+
+            switch (extension)
+            {
+                case ".kgt":
+                    parseKgt(inputFile);
+                    break;
+                case ".player":
+                    parseSingle(new PlayerParser(inputFile, null).Parse(), inputFile);
+                    break;
+                case ".stage":
+                    parseSingle(new StageParser(inputFile, null).Parse(), inputFile);
+                    break;
+                case ".demo":
+                    parseSingle(new DemoParser(inputFile, null).Parse(), inputFile);
+                    break;
+                default:
+                    Console.WriteLine($"Unsupported file type '{extension}'. Expected .kgt, .player, .stage or .demo.");
+                    break;
+            }
+        }
+
+        private void parseSingle(FMFile fmFile, string filename)
+        {
+            doParse(fmFile, filename);
+        }
+
+
+        private void parseKgt(string kgtFile)
         {
             var baseDir = Path.GetDirectoryName(kgtFile);
             var parser = new KGTParser(kgtFile);
@@ -210,6 +240,8 @@ namespace Fm2ndParser
                 int imageIndex = 0;
                 foreach (var image in fmFile.Images)
                 {
+                    if (image.Data.Length == 0) continue;
+
                     var filename = $"{imageIndex:D4}.bmp";
 
                     if (image.PaletteType == PaletteType.Private)

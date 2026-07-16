@@ -34,10 +34,10 @@ namespace Fm2ndParser
                 errs => HandleParseError(errs)
             );
             await parsed;
-        }
+            }
 
         private static Task HandleParseError(IEnumerable<Error> obj)
-        {
+            {
             //Console.WriteLine("You must specify a .player path as argument");
             return Task.CompletedTask;
         }

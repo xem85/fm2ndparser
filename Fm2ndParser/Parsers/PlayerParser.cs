@@ -289,7 +289,7 @@ namespace Fm2ndParser.Parsers
                 Demo = demoIndex > 0 ? new SkillReference
                 {
                     Number = demoIndex,
-                    Name = _kgt.Demos.Skip(demoIndex - 1).First()
+                    Name = _kgt?.Demos.Skip(demoIndex - 1).First(),
                 } : null,
             };
             skipEmptyBytes(bytes, 0xCB, ref offset);
