@@ -101,8 +101,18 @@ Each image has a `paletteType` field (see `ImageResource` in
 
 ## Sound format
 
-Sounds are exported as-is to `snd/<index>.wav`. The bytes written are the raw sound
-`data` from the source (empty file if a sound has no data). The `sounds[].type` field
-in the JSON distinguishes Wave / MIDI / CDDA entries (see `SoundResource` and the
-`SoundType` enum in [json-spec.md](json-spec.md)); the exporter writes the stored
-bytes regardless of type, so non-Wave entries may not be valid `.wav` files.
+Sounds are exported as-is to `snd/<index>.<ext>`, where the extension is chosen from
+the `sounds[].type` field (see `SoundResource` and the `SoundType` enum in
+[json-spec.md](json-spec.md)):
+
+| `type` | Extension |
+| ------ | --------- |
+| Wave   | `.wav`    |
+| Midi   | `.mid`    |
+| CDDA   | `.cda`    |
+| None   | `.bin`    |
+
+The bytes written are the raw sound `data` from the source (empty file if a sound has
+no data). The exporter only picks the extension from the type — it does not convert or
+re-wrap the bytes, so non-Wave entries may still not be valid media files; the
+extension just reflects the format the source declared.
