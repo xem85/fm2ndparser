@@ -44,6 +44,14 @@ Useful options:
 - `--new-files` (`-n`): create new JSON files instead of overwriting
 - `--export-resources` (`-x`): export embedded images/sounds
 
+## Documentation
+
+Detailed reference lives in [`docs/`](docs/README.md):
+
+- [CLI usage](docs/cli-usage.md) — invocation, input types, flags, output location.
+- [Output formats](docs/output-formats.md) — JSON file, resource folder layout, indexed-BMP/palette handling, sounds.
+- [JSON specification](docs/json-spec.md) — complete field-by-field schema, block types, and enums.
+
 ## Current status
 
 - Parsing/export is the current focus
