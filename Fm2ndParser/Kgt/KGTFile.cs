@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Fm2ndParser.Kgt
 {
-    public class KGT : FMFile
+    public class KGTFile : FMFile
     {
         public ICollection<string> Characters { get; set; }
         public List<string> HitJunctions { get; set; }

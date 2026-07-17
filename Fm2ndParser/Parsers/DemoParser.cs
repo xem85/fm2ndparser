@@ -13,7 +13,7 @@ namespace Fm2ndParser.Parsers
     public class DemoParser : BaseParser
     {
 
-        public DemoParser(string filename, KGT kgt) : base(filename, kgt)
+        public DemoParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
         }
 

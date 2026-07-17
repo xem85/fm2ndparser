@@ -16,14 +16,14 @@ namespace Fm2ndParser.Parsers
         {
         }
 
-        public KGT Parse()
+        public KGTFile Parse()
         {
-            return base.parse<KGT>();
+            return base.parse<KGTFile>();
         }
 
         protected override T ParseInternal<T>(Span<byte> bytes, ref int offset)
         {
-            _kgt = base.ParseInternal<KGT>(bytes, ref offset);
+            _kgt = base.ParseInternal<KGTFile>(bytes, ref offset);
 
             skipEmptyBytes(bytes, 4, ref offset);
 

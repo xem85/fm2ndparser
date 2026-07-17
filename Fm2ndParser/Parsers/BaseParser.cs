@@ -4,6 +4,7 @@ using Fm2ndParser.Kgt;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -11,18 +12,17 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser.Parsers
 {
     public abstract class BaseParser
     {
         protected string _filename;
-        protected KGT _kgt;
+        protected KGTFile _kgt;
         protected IList<Skill> _skills;
         protected IList<SkillBlockReference> _skillBlockRefs = new List<SkillBlockReference>();
 
-        public BaseParser(string filename, KGT kgt)
+        public BaseParser(string filename, KGTFile kgt)
         {
             _filename = filename;
             _kgt = kgt;

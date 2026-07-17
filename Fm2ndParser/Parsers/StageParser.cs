@@ -13,7 +13,7 @@ namespace Fm2ndParser.Parsers
     public class StageParser : BaseParser
     {
 
-        public StageParser(string filename, KGT kgt) : base(filename, kgt)
+        public StageParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
         }
 

@@ -17,7 +17,7 @@ namespace Fm2ndParser.Parsers
     public class PlayerParser : BaseParser
     {
 
-        public PlayerParser(string filename, KGT kgt) : base(filename, kgt)
+        public PlayerParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
         }
 
