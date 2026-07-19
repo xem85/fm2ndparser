@@ -1,4 +1,6 @@
-﻿using Fm2ndParser.Common;
+﻿using CommandLine;
+using CommandLine.Text;
+using Fm2ndParser.Common;
 using Fm2ndParser.Parsers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -6,11 +8,44 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Fm2ndParser
 {
+
+    [Verb("parse", HelpText = "Parse FM2k binary files into JSON files.")]
+    public class ParseOptions
+    {
+        [Usage(ApplicationAlias = "Fm2ndParser")]
+        public static IEnumerable<Example> Examples
+        {
+            get
+            {
+                yield return new Example("Single file", new ParseOptions { InputFiles = new[] { "character1.player" } });
+                yield return new Example("Parse and Clean up", new ParseOptions { InputFiles = new[] { "character1.player" }, CleanUp = true });
+                yield return new Example("Multiple files", new ParseOptions { InputFiles = new[] { "character1.player", "character2.player" } });
+            }
+        }
+
+        [Value(0, Required = true, Hidden = true, HelpText = "Kgt input file to be processed.")]
+        public IEnumerable<string> InputFiles { get; set; }
+
+        [Option('n', "new-files",
+          Default = false,
+          HelpText = "Instead of replacing the existing json, it creates another one.")]
+        public bool NewFiles { get; set; }
+
+        [Option('c', "clean-up",
+          Default = false,
+          HelpText = "Merges [I] blocks and does other cleanups for comparison purposes.")]
+        public bool CleanUp { get; set; }
+
+        [Option('x', "export-resources",
+          Default = false,
+          HelpText = "Export attached resources.")]
+        public bool ExportResources { get; set; }
+    }
+
     public class ParseCommand
     {
         private string kgtFile;
@@ -312,13 +347,13 @@ namespace Fm2ndParser
             }
 
             var palette = palettes[paletteIndex];
-            if (palette == null || palette.Length < 0x400)
+            if (palette == null || palette.Data.Length < 0x400)
             {
                 return null;
             }
 
             var bmpPalette = new byte[0x400];
-            Buffer.BlockCopy(palette, 0, bmpPalette, 0, 0x400);
+            Buffer.BlockCopy(palette.Data, 0, bmpPalette, 0, 0x400);
             return bmpPalette;
         }
 

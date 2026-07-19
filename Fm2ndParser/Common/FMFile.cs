@@ -8,7 +8,7 @@ namespace Fm2ndParser.Common
         public string Name { get; set; }
         public ICollection<Skill> Skills { get; set; }
         public ICollection<ImageResource> Images { get; set; }
-        public ICollection<byte[]> GlobalPalettes { get; set; }
+        public ICollection<Palette> GlobalPalettes { get; set; }
         public ICollection<SoundResource> Sounds { get; set; }
         public SkillReference BGM { get; set; }
         public uint Time { get; set; }
