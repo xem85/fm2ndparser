@@ -880,7 +880,7 @@ namespace Fm2ndParser.Parsers
                     Pointer = pointer.ToArray(),
                     Width = width,
                     Height = height,
-                    PaletteType = paletteType,
+                    PaletteType = (PaletteType)paletteType,
                     PackedSize = packedSize,
                     Offset = entryOffset,
                     Data = imageData,
@@ -941,12 +941,14 @@ namespace Fm2ndParser.Parsers
         #region palette
         private Palette parsePalette(Span<byte> bytes, ref int offset)
         {
+            var position = offset;
             var data = getWord(bytes, 0x420, ref offset).ToArray();
             var colors = data.Chunk(4).Select(c => parseFM2kColor(c.ToArray())).ToArray();
 
             var result = new Palette
             {
-                Position = offset,
+                Data = data,
+                Position = position,
                 Colors = colors,
             };
 
@@ -971,35 +973,7 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        public byte[] ToFM2kPalette(Color[] colors)
-        {
-            var result = colors.SelectMany(x => toFM2kColor(x)).ToArray();
-            return result;
-        }
 
-        private byte[] toFM2kColor(Color color)
-        {
-            if (color.A == 255)
-            {
-                var r = (byte)Math.Min((int)Math.Round((double)color.R / 8) * 8, 255);
-                var g = (byte)Math.Min((int)Math.Round((double)color.G / 8) * 8, 255);
-                var b = (byte)Math.Min((int)Math.Round((double)color.B / 8) * 8, 255);
-
-                return new byte[] { b, g, r, 1 };
-            }
-            else
-            {
-                return new byte[] { 0, 0, 0, 0 };
-            }
-        }
-
-        private string toFM2kColorString(Color color)
-        {
-            var colorArray = toFM2kColor(color);
-            var result = string.Join(" ", colorArray.Select(x => x.ToString("X2")));
-
-            return result + " ";
-        }
         #endregion
 
         protected byte[] extractSprite(byte[] source, int destinationSize)

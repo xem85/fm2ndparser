@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace Fm2ndParser
 {
@@ -205,35 +207,28 @@ namespace Fm2ndParser
 
             if (fmFile.Images != null)
             {
-                var altPaletteDirs = new List<string>();
-                for (int i = 1; i <= 7; i++)
-                {
-                    var dir = Path.Combine(outputDir, i.ToString());
-                    Directory.CreateDirectory(dir);
-                    altPaletteDirs.Add(dir);
-                }
-
                 int imageIndex = 0;
                 foreach (var image in fmFile.Images)
                 {
                     var filename = $"{imageIndex:D4}.bmp";
 
-                    if (image.PaletteType == 1)
+                    if (image.PaletteType == PaletteType.Private)
                     {
                         var imagePath = Path.Combine(imageDir, filename);
-                        writeIndexedBmp(imagePath, image.Width, image.Height, image.Data, null);
+                        var bmpStream = ToIndexedBmpStream(image, (byte[])null);
+                        File.WriteAllBytes(imagePath, bmpStream.ToArray());
                     }
                     else
                     {
-                        var defaultPalette = getGlobalPalette(fmFile, 0);
-                        var imagePath = Path.Combine(imageDir, filename);
-                        writeIndexedBmp(imagePath, image.Width, image.Height, image.Data, defaultPalette);
-
-                        for (int p = 1; p <= 7; p++)
+                        for (int p = 0; p < 8; p++)
                         {
                             var altPalette = getGlobalPalette(fmFile, p);
-                            var altImagePath = Path.Combine(altPaletteDirs[p - 1], filename);
-                            writeIndexedBmp(altImagePath, image.Width, image.Height, image.Data, altPalette);
+
+                            var dir = Path.Combine(outputDir, (p + 1).ToString());
+                            Directory.CreateDirectory(dir);
+                            var altImagePath = Path.Combine(dir, filename);
+                            var bmpStream = ToIndexedBmpStream(image, altPalette);
+                            File.WriteAllBytes(altImagePath, bmpStream.ToArray());
                         }
                     }
 
@@ -253,16 +248,58 @@ namespace Fm2ndParser
             }
         }
 
-        private static void writeIndexedBmp(string outputPath, uint width, uint height, byte[] imageData, byte[] externalPalette)
+        #region Palette Conversion
+        public static byte[] ToFM2kPalette(Color[] colors)
+        {
+            var result = colors.SelectMany(x => toFM2kColor(x)).ToArray();
+            return result;
+        }
+
+        private static byte[] toFM2kColor(Color color)
+        {
+            if (color.A == 255)
+            {
+                var r = (byte)Math.Min((int)Math.Round((double)color.R / 8) * 8, 255);
+                var g = (byte)Math.Min((int)Math.Round((double)color.G / 8) * 8, 255);
+                var b = (byte)Math.Min((int)Math.Round((double)color.B / 8) * 8, 255);
+
+                return new byte[] { b, g, r, 1 };
+            }
+            else
+            {
+                return new byte[] { 0, 0, 0, 0 };
+            }
+        }
+
+        private static string toFM2kColorString(Color color)
+        {
+            var colorArray = toFM2kColor(color);
+            var result = string.Join(" ", colorArray.Select(x => x.ToString("X2")));
+
+            return result + " ";
+        }
+
+        public static MemoryStream ToIndexedBmpStream(ImageResource image, Palette alternativePalette = null)
+        {
+            var paletteData = alternativePalette != null ? ToFM2kPalette(alternativePalette.Colors) : null;
+            return ToIndexedBmpStream(image.Width, image.Height, image.Data, paletteData);
+        }
+
+        public static MemoryStream ToIndexedBmpStream(ImageResource image, byte[] alternativePalette = null)
+        {
+            return ToIndexedBmpStream(image.Width, image.Height, image.Data, alternativePalette);
+        }
+
+        public static MemoryStream ToIndexedBmpStream(uint width, uint height, byte[] imageData, byte[] externalPalette = null)
         {
             if (width == 0 || height == 0)
             {
-                return;
+                return null;
             }
 
             if (imageData == null)
             {
-                return;
+                return null;
             }
 
             var pixelSize = checked((int)(width * height));
@@ -271,7 +308,7 @@ namespace Fm2ndParser
             var required = hasEmbeddedPalette ? pixelSize + paletteSize : pixelSize;
             if (imageData.Length < required)
             {
-                return;
+                return null;
             }
 
             byte[] palette;
@@ -300,8 +337,8 @@ namespace Fm2ndParser
             var dataOffset = fileHeaderSize + dibHeaderSize + paletteSize;
             var fileSize = dataOffset + pixelArraySize;
 
-            using var stream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            using var writer = new BinaryWriter(stream);
+            var stream = new MemoryStream();
+            var writer = new BinaryWriter(stream);
 
             writer.Write((byte)'B');
             writer.Write((byte)'M');
@@ -331,6 +368,8 @@ namespace Fm2ndParser
                 Buffer.BlockCopy(imageData, pixelOffset + y * (int)width, rowBuffer, 0, (int)width);
                 writer.Write(rowBuffer);
             }
+            stream.Position = 0;
+            return stream;
         }
 
         private static byte[] getGlobalPalette(FMFile fmFile, int paletteIndex)
@@ -356,6 +395,7 @@ namespace Fm2ndParser
             Buffer.BlockCopy(palette.Data, 0, bmpPalette, 0, 0x400);
             return bmpPalette;
         }
+        #endregion
 
         private static string getJsonFilename(string filename)
         {
