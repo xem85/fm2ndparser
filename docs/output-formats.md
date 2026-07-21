@@ -26,7 +26,7 @@ For an input whose base name is `<basename>`, resources are written under:
 
 ```
 <basename>/
-├── img/        # images using the default palette
+├── img/        # images using the private palette
 │   ├── 0000.bmp
 │   ├── 0001.bmp
 │   └── ...
@@ -34,7 +34,7 @@ For an input whose base name is `<basename>`, resources are written under:
 │   ├── 0000.wav
 │   ├── 0001.wav
 │   └── ...
-├── 1/          # same images re-colored with global palette 1
+├── 1/          # images using the global palette images re-colored with global palette 1
 ├── 2/          # ... global palette 2
 ├── 3/
 ├── 4/
@@ -46,18 +46,18 @@ For an input whose base name is `<basename>`, resources are written under:
 - Files are named by their **zero-based index** in the source file, zero-padded to
   four digits (`0000`, `0001`, …). The index matches the position in the `images` /
   `sounds` arrays of the JSON.
-- `img/`, `snd/` and `1/`–`7/` are always created when `-x` is used, even if a
+- `img/`, `snd/` and `1/`–`8/` are always created when `-x` is used, even if a
   category is empty.
 - An image is skipped (no file written) if its width or height is 0, if it has no
   pixel data, or if its data is shorter than required.
 
 ### What the numbered folders mean
 
-Folders `1/` through `7/` exist because Fighter Maker characters support **palette
+Folders `1/` through `8/` exist because Fighter Maker characters support **palette
 swaps** (alternate color schemes for the same sprite). They only apply to images that
 use a *global* palette (see below). Each numbered folder holds the **same pixel data**
-as `img/` but with a different global palette applied, so `1/0003.bmp` is image `0003`
-recolored with global palette 1. Images that carry their **own embedded** palette are
+but with a different global palette applied, so `2/0003.bmp` is image `1/0003.bmp`
+recolored with global palette 2. Images that carry their **own embedded** palette are
 written only to `img/`.
 
 ## Image format & palette handling
@@ -83,36 +83,25 @@ source uses. (In the JSON, standalone colors are exposed as `{ r, g, b, a }` —
 
 ### Two palette sources
 
-Each image has a `paletteType` field (see `ImageResource` in
+Each image has a `PaletteType` field (see `ImageResource` in
 [json-spec.md](json-spec.md)) that determines where its colors come from:
 
-- **`paletteType == 1` — embedded palette.** The image's own `data` begins with a
+- **`PaletteType.Global` — global palette.** The image `data` is pixel indices only;
+  colors come from the file's shared `globalPalettes` array (8 palettes, indices 0–7,
+  each 1024 bytes). The tool writes:
+  - `<p>/<index>.bmp` for `p = 1..8` using global palette `p-1`.
+- **`PaletteType.Private` — embedded palette.** The image's own `data` begins with a
   1024-byte palette followed by the pixel indices. The tool splits these out and
   writes a single BMP to `img/`. No alternate-palette folders are produced for this
   image.
-- **`paletteType != 1` — global palette.** The image `data` is pixel indices only;
-  colors come from the file's shared `globalPalettes` array (8 palettes, indices 0–7,
-  each 1024 bytes). The tool writes:
-  - `img/<index>.bmp` using **global palette 0** (the default), and
-  - `<p>/<index>.bmp` for `p = 1..7` using global palette `p`.
 
   If a given global palette is missing or shorter than 1024 bytes, that variant is
   skipped for that image.
 
 ## Sound format
 
-Sounds are exported as-is to `snd/<index>.<ext>`, where the extension is chosen from
-the `sounds[].type` field (see `SoundResource` and the `SoundType` enum in
-[json-spec.md](json-spec.md)):
-
-| `type` | Extension |
-| ------ | --------- |
-| Wave   | `.wav`    |
-| Midi   | `.mid`    |
-| CDDA   | `.cda`    |
-| None   | `.bin`    |
-
-The bytes written are the raw sound `data` from the source (empty file if a sound has
-no data). The exporter only picks the extension from the type — it does not convert or
-re-wrap the bytes, so non-Wave entries may still not be valid media files; the
-extension just reflects the format the source declared.
+Sounds are exported as-is to `snd/<index>.wav`. The bytes written are the raw sound
+`data` from the source (empty file if a sound has no data). The `sounds[].type` field
+in the JSON distinguishes Wave / MIDI / CDDA entries (see `SoundResource` and the
+`SoundType` enum in [json-spec.md](json-spec.md)); the exporter writes the stored
+bytes regardless of type, so non-Wave entries may not be valid `.wav` files.
