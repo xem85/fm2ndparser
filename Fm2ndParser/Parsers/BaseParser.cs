@@ -1310,12 +1310,12 @@ namespace Fm2ndParser.Parsers
 
                 var step = new CommandStep()
                 {
-                    A = isFlagOn(flags1, 3),
-                    B = isFlagOn(flags1, 2),
-                    C = isFlagOn(flags1, 1),
-                    D = isFlagOn(flags1, 0),
-                    E = isFlagOn(flags2, 7),
-                    F = isFlagOn(flags2, 6),
+                    A = isFlagOn(flags1, 4),
+                    B = isFlagOn(flags1, 5),
+                    C = isFlagOn(flags1, 6),
+                    D = isFlagOn(flags1, 7),
+                    E = isFlagOn(flags2, 0),
+                    F = isFlagOn(flags2, 1),
                     Continue = isFlagOn(flags2, 4),
                     Active = isFlagOn(flags2, 5),
                     Direction = (ComDirection)(flags1 & 0b00001111),
