@@ -2,15 +2,16 @@
 using CommandLine.Text;
 using Fm2ndParser.Common;
 using Fm2ndParser.Parsers;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Drawing;
-using System.Drawing.Imaging;
 
 namespace Fm2ndParser
 {
@@ -54,13 +55,15 @@ namespace Fm2ndParser
         private bool cleanUp;
         private bool overwrite;
         private bool doExportResources;
+        private ILogger<ParseCommand> logger;
 
-        public ParseCommand(string inputFile, bool cleanUp, bool newFile, bool doExportResources)
+        public ParseCommand(string inputFile, bool cleanUp, bool newFile, bool doExportResources, ILogger<ParseCommand> logger)
         {
             this.inputFile = inputFile;
             this.cleanUp = cleanUp;
             this.overwrite = !newFile;
             this.doExportResources = doExportResources;
+            this.logger = logger;
         }
 
         public async Task Execute()

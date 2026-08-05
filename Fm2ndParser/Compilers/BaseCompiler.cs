@@ -405,7 +405,7 @@ namespace Fm2ndParser.Compilers
 
         protected byte[] setSplittedData(byte flags, ushort value)
         {
-            var iMask = (byte)BaseParser.CreateBitMask(0, 5);
+            var iMask = (byte)BaseParser<FMFile>.CreateBitMask(0, 5);
 
             // flags può occupare solo i 3 bit alti del secondo byte
             if ((flags & iMask) != 0)

@@ -6,6 +6,7 @@ using Fm2ndParser.Compilers;
 using Fm2ndParser.Demo;
 using Fm2ndParser.Kgt;
 using Fm2ndParser.Stage;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -35,10 +36,12 @@ namespace Fm2ndParser
     internal class CompileCommand : Command 
     {
         private string kgtFile;
+        private ILogger<CompileCommand> logger;
 
-        public CompileCommand(string kgtFile)
+        public CompileCommand(string kgtFile, ILogger<CompileCommand> logger)
         {
             this.kgtFile = kgtFile;
+            this.logger = logger;
         }
         public async Task Execute()
         {

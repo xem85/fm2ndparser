@@ -14,21 +14,16 @@ using Fm2ndParser.Common;
 
 namespace Fm2ndParser.Parsers
 {
-    public class PlayerParser : BaseParser
+    public class PlayerParser : BaseParser<PlayerFile>
     {
 
         public PlayerParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
         }
-
-        public PlayerFile Parse()
+    
+        protected override PlayerFile ParseInternal(Span<byte> bytes, ref int offset)
         {
-            return base.parse<PlayerFile>();
-        }
-
-        protected override T ParseInternal<T>(Span<byte> bytes, ref int offset)
-        {
-            var player = base.ParseInternal<PlayerFile>(bytes, ref offset);
+            var player = base.ParseInternal(bytes, ref offset);
 
             setSettingsBlocksData();
 
@@ -55,7 +50,7 @@ namespace Fm2ndParser.Parsers
 
             skiRemaningEmptyBytes(bytes, ref offset);
 
-            return (T)(object)player;
+            return player;
         }
 
         private ICollection<HitJunctionSkills> parseHitJunctionsSkills(Span<byte> bytes, ref int offset)

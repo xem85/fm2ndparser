@@ -10,16 +10,11 @@ using Fm2ndParser.Stage;
 
 namespace Fm2ndParser.Parsers
 {
-    public class StageParser : BaseParser
+    public class StageParser : BaseParser<StageFile>
     {
 
         public StageParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
-        }
-
-        public StageFile Parse()
-        {
-            return base.parse<StageFile>();
         }
 
         protected override SettingsType getSettingsType(uint skillIdx)
@@ -27,9 +22,9 @@ namespace Fm2ndParser.Parsers
             return SettingsType.Stage;
         }
 
-        protected override Stage ParseInternal<Stage>(Span<byte> bytes, ref int offset)
+        protected override StageFile ParseInternal(Span<byte> bytes, ref int offset)
         {
-            var stage = base.ParseInternal<Stage>(bytes, ref offset);
+            var stage = base.ParseInternal(bytes, ref offset);
 
             setSettingsBlocksData();
 

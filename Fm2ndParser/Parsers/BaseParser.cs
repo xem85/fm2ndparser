@@ -15,7 +15,7 @@ using System.Xml.Linq;
 
 namespace Fm2ndParser.Parsers
 {
-    public abstract class BaseParser
+    public abstract class BaseParser<T> where T : FMFile, new()
     {
         protected string _filename;
         protected KGTFile _kgt;
@@ -28,17 +28,22 @@ namespace Fm2ndParser.Parsers
             _kgt = kgt;
         }
 
-        protected T parse<T>() where T : FMFile, new()
+        public T Parse()
+        {
+            return parse();
+        }
+
+        protected T parse()
         {
             var file = File.ReadAllBytes(_filename);
             Span<byte> bytes = file;
 
             var offset = 0;
 
-            return ParseInternal<T>(bytes, ref offset);
+            return ParseInternal(bytes, ref offset);
         }
 
-        protected virtual T ParseInternal<T>(Span<byte> bytes, ref int offset) where T : FMFile, new()
+        protected virtual T ParseInternal(Span<byte> bytes, ref int offset)
         {
             var type = getString(bytes, 12, ref offset);
             var loadedFlags = getUInt32(bytes, ref offset);
@@ -1098,7 +1103,7 @@ namespace Fm2ndParser.Parsers
             iWord[1] = (byte)(word[1] & iMask);
             value = BitConverter.ToUInt16(iWord);
         }
-
+          
         public static uint CreateBitMask(int start, int length)
         {
             uint mask = 0xffffffff;

@@ -10,22 +10,16 @@ using Fm2ndParser.Demo;
 
 namespace Fm2ndParser.Parsers
 {
-    public class DemoParser : BaseParser
+    public class DemoParser : BaseParser<DemoFile>
     {
 
         public DemoParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
         }
 
-        public DemoFile Parse()
+        protected override DemoFile ParseInternal(Span<byte> bytes, ref int offset)
         {
-            return base.parse<DemoFile>();
-        }
-
-
-        protected override Demo ParseInternal<Demo>(Span<byte> bytes, ref int offset)
-        {
-            var demo = base.ParseInternal<Demo>(bytes, ref offset);
+            var demo = base.ParseInternal(bytes, ref offset);
 
             setSettingsBlocksData();
 

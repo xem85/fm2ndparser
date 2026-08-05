@@ -10,20 +10,15 @@ using System.Text;
 
 namespace Fm2ndParser.Parsers
 {
-    public class KGTParser : BaseParser
+    public class KGTParser : BaseParser<KGTFile>
     {
         public KGTParser(string filename) : base(filename, null)
         {
         }
 
-        public KGTFile Parse()
+        protected override KGTFile ParseInternal(Span<byte> bytes, ref int offset)
         {
-            return base.parse<KGTFile>();
-        }
-
-        protected override T ParseInternal<T>(Span<byte> bytes, ref int offset)
-        {
-            _kgt = base.ParseInternal<KGTFile>(bytes, ref offset);
+            _kgt = base.ParseInternal(bytes, ref offset);
 
             skipEmptyBytes(bytes, 4, ref offset);
 
@@ -70,7 +65,7 @@ namespace Fm2ndParser.Parsers
             setCharactersSettings(bytes, _kgt.Characters, ref offset);
 
             skiRemaningEmptyBytes(bytes, ref offset);
-            return (T)(object)_kgt;
+            return _kgt;
         }
 
         private KGTBuiltInSkills parseBuiltInSkills(Span<byte> bytes, ref int offset)
