@@ -27,6 +27,8 @@ namespace Fm2ndParser.Compilers
             writeUInt16(writer, Convert.ToUInt16(_fmFile.SkipWithInput));
             writeZeros(writer, 1);
             writeUInt32(writer, _fmFile.Time);
+
+            writeZeros(writer, 1024 - 9);
         }
     }
 }

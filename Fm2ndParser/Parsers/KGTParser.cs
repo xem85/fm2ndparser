@@ -24,7 +24,7 @@ namespace Fm2ndParser.Parsers
 
             _kgt.Characters = parseCharacters(bytes, ref offset);
 
-            _kgt.HitJunctions = parseHitJuncrions(bytes, ref offset);
+            _kgt.HitJunctions = parseHitJunctions(bytes, ref offset);
 
             // unknown
             var unknown = getUInt32(bytes, ref offset);
@@ -62,7 +62,7 @@ namespace Fm2ndParser.Parsers
 
             _kgt.SelectionScreen = parseSelectionScreen(bytes, ref offset);
 
-            setCharactersSettings(bytes, _kgt.Characters, ref offset);
+            parseCharactersSettings(bytes, _kgt.Characters, ref offset);
 
             skiRemaningEmptyBytes(bytes, ref offset);
             return _kgt;
@@ -222,6 +222,16 @@ namespace Fm2ndParser.Parsers
                 TimeNumber7 = shSkillIdxTimeNumber7,
                 TimeNumber8 = shSkillIdxTimeNumber8,
                 TimeNumber9 = shSkillIdxTimeNumber9,
+                SpecialStockNumber0 = shSkillIdxSpecialStockNumber0,
+                SpecialStockNumber1 = shSkillIdxSpecialStockNumber1,
+                SpecialStockNumber2 = shSkillIdxSpecialStockNumber2,
+                SpecialStockNumber3 = shSkillIdxSpecialStockNumber3,
+                SpecialStockNumber4 = shSkillIdxSpecialStockNumber4,
+                SpecialStockNumber5 = shSkillIdxSpecialStockNumber5,
+                SpecialStockNumber6 = shSkillIdxSpecialStockNumber6,
+                SpecialStockNumber7 = shSkillIdxSpecialStockNumber7,
+                SpecialStockNumber8 = shSkillIdxSpecialStockNumber8,
+                SpecialStockNumber9 = shSkillIdxSpecialStockNumber9,
                 VictoryMarkOn = shSkillIdxVictoryMarkOn,
                 VictoryMarkOff = shSkillIdxVictoryMarkOff,
                 StageLayout1 = shSkillIdxStageLayout1,
@@ -275,16 +285,19 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private void setCharactersSettings(Span<byte> bytes, ICollection<string> characters, ref int offset)
+        private void parseCharactersSettings(Span<byte> bytes, ICollection<Kgt.Character> characters, ref int offset)
         {
             for (int i = 0; i < 50; i++)
             {
                 var flags = getByte(bytes, ref offset);
 
-                var enabledForStoryMode = isFlagOn(flags, 0);
-                var enabledForVsMode = isFlagOn(flags, 1);
+                var character = characters.ElementAtOrDefault(i);
+                if (character == null)
+                    continue;
 
-                // todo
+                character.EnabledForStoryMode = isFlagOn(flags, 0);
+                character.EnabledForVsMode = isFlagOn(flags, 1);
+
                 assertUnusedFlags(flags, 0b11111100);
             }
         }
@@ -389,28 +402,28 @@ namespace Fm2ndParser.Parsers
             };
         }
 
-        private List<string> parseHitJuncrions(Span<byte> bytes, ref int offset)
+        private List<HitJunction> parseHitJunctions(Span<byte> bytes, ref int offset)
         {
-            var result = new List<string>();
+            var result = new List<HitJunction>();
             for (int i = 0; i < 200; i++)
             {
                 var name = getString(bytes, 0x20, ref offset);
                 var active = getUInt32(bytes, ref offset);
                 if (!string.IsNullOrEmpty(name))
-                    result.Add(name);
+                    result.Add(new HitJunction { Name = name, Active = active == 1 });
             }
 
             return result;
         }
 
-        private List<string> parseCharacters(Span<byte> bytes, ref int offset)
+        private List<Kgt.Character> parseCharacters(Span<byte> bytes, ref int offset)
         {
-            var result = new List<string>();
+            var result = new List<Kgt.Character>();
             for (int i = 0; i < 50; i++)
             {
                 var name = getString(bytes, 0x100, ref offset);
                 if (!string.IsNullOrEmpty(name))
-                    result.Add(name);
+                    result.Add(new Kgt.Character { Name = name });
             }
 
             return result;

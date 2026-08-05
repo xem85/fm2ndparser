@@ -64,7 +64,7 @@ namespace Fm2ndParser.Parsers
 
             var result = new T
             {
-                Type = Path.GetExtension(_filename).ToLowerInvariant().Skip(1).ToString(),
+                Type = Path.GetExtension(_filename).ToLowerInvariant().Substring(1),
                 Name = name,
                 Skills = _skills,
                 Images = images,
@@ -921,7 +921,7 @@ namespace Fm2ndParser.Parsers
                 var flags = getByte(bytes, ref offset);
                 assertUnusedFlags(flags, 0b11101100);
 
-                var endlessLoop = isFlagOn(flags, 5);
+                var endlessLoop = isFlagOn(flags, 4);
                 var type = (SoundType)(flags & 0b00000011);
 
                 var cddaTrack = getByte(bytes, ref offset);
@@ -1042,7 +1042,7 @@ namespace Fm2ndParser.Parsers
             };
             if (_kgt?.HitJunctions.Count > result.Number)
             {
-                result.Name = _kgt.HitJunctions[result.Number];
+                result.Name = _kgt.HitJunctions[result.Number].Name;
             }
             else
             {

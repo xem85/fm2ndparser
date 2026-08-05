@@ -5,8 +5,8 @@ namespace Fm2ndParser.Kgt
 {
     public class KGTFile : FMFile
     {
-        public ICollection<string> Characters { get; set; }
-        public List<string> HitJunctions { get; set; }
+        public ICollection<Character> Characters { get; set; }
+        public List<HitJunction> HitJunctions { get; set; }
         public List<string> CommonImages { get; set; }
         public List<string> Stages { get; set; }
         public List<string> Demos { get; set; }

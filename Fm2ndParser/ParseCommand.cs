@@ -98,7 +98,7 @@ namespace Fm2ndParser
 
             foreach (var character in kgt.Characters)
             {
-                var filename = Path.Combine(baseDir, character + ".player");
+                var filename = Path.Combine(baseDir, character.Name + ".player");
                 var playerParser = new PlayerParser(filename, kgt);
                 doParse(playerParser, filename);
             }

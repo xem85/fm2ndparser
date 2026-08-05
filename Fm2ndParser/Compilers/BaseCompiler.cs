@@ -226,7 +226,7 @@ namespace Fm2ndParser.Compilers
 
                 byte flags = 0;
 
-                if (sound.EndlessLoop) flags |= 1 << 5;
+                if (sound.EndlessLoop) flags |= 1 << 4;
                 flags |= (byte)((byte)sound.Type & 0b00000011);
                 writeBytes(writer, [flags]);
 

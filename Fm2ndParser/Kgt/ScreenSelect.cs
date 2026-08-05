@@ -1,6 +1,6 @@
 ﻿namespace Fm2ndParser.Kgt
 {
-    class ScreenSelect
+    public class ScreenSelect
     {
         public byte TitleScreen { get; set; }
         public byte P1vsCPU { get; set; }

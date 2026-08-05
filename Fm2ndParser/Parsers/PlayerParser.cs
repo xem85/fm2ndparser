@@ -293,7 +293,7 @@ namespace Fm2ndParser.Parsers
                 Character = character > 0 ? new SkillReference
                 {
                     Number = character,
-                    Name = _kgt?.Characters.Skip(character - 1).First(),
+                    Name = _kgt?.Characters.Skip(character - 1).First().Name,
                 } : null,
                 CpuLevel = cpuLevel,
                 PlayerIsEnemy = playerIsEnemy,

@@ -10,6 +10,6 @@
         public bool NumbersOnHPLifeBar { get; set; }
         public bool CursorAppearsPressingAButton { get; set; }
         public StiffTime StiffTime { get; set; }
-        internal ScreenSelect Select { get; set; }
+        public ScreenSelect Select { get; set; }
     }
 }

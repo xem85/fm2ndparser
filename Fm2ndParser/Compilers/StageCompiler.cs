@@ -20,6 +20,12 @@ namespace Fm2ndParser.Compilers
         override protected void CompileInternal(BinaryWriter writer)
         {
             base.CompileInternal(writer);
+
+            writeZeros(writer, 4);
+
+            writeUInt16(writer, (ushort)_fmFile.BGM.Number);
+
+            writeZeros(writer, 1024);
         }
     }
 }
