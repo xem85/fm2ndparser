@@ -33,7 +33,7 @@ namespace Fm2ndParser
         public IEnumerable<string> InputFiles { get; set; }
     }
 
-    internal class CompileCommand : Command 
+    internal class CompileCommand : Command
     {
         private string kgtFile;
         private ILogger<CompileCommand> logger;
@@ -68,6 +68,8 @@ namespace Fm2ndParser
 
             if (string.IsNullOrWhiteSpace(type))
                 throw new JsonSerializationException("Property 'type' is required");
+
+            logger.LogInformation($"Compiling {kgtFile}");
 
             switch (type)
             {

@@ -76,13 +76,13 @@ namespace Fm2ndParser
                     parseKgt(inputFile);
                     break;
                 case ".player":
-                    parseSingle(new PlayerParser(inputFile, null).Parse(), inputFile);
+                    doParse(new PlayerParser(inputFile, null), inputFile);
                     break;
                 case ".stage":
-                    parseSingle(new StageParser(inputFile, null).Parse(), inputFile);
+                    doParse(new StageParser(inputFile, null), inputFile);
                     break;
                 case ".demo":
-                    parseSingle(new DemoParser(inputFile, null).Parse(), inputFile);
+                    doParse(new DemoParser(inputFile, null), inputFile);
                     break;
                 default:
                     Console.WriteLine($"Unsupported file type '{extension}'. Expected .kgt, .player, .stage or .demo.");
@@ -90,48 +90,39 @@ namespace Fm2ndParser
             }
         }
 
-        private void parseSingle(FMFile fmFile, string filename)
-        {
-            doParse(fmFile, filename);
-        }
-
-
         private void parseKgt(string kgtFile)
         {
             var baseDir = Path.GetDirectoryName(kgtFile);
             var parser = new KGTParser(kgtFile);
-            var kgt = parser.Parse();
-            doParse(kgt, kgtFile);
+            var kgt = doParse(parser, kgtFile);
 
             foreach (var character in kgt.Characters)
             {
                 var filename = Path.Combine(baseDir, character + ".player");
                 var playerParser = new PlayerParser(filename, kgt);
-                var player = playerParser.Parse();
-
-                doParse(player, filename);
+                doParse(playerParser, filename);
             }
 
             foreach (var stageName in kgt.Stages)
             {
                 var filename = Path.Combine(baseDir, stageName + ".stage");
                 var stageParser = new StageParser(filename, kgt);
-                var stage = stageParser.Parse();
-                doParse(stage, filename);
+                doParse(stageParser, filename);
             }
 
             foreach (var demoName in kgt.Demos)
             {
                 var filename = Path.Combine(baseDir, demoName + ".demo");
                 var demoParser = new DemoParser(filename, kgt);
-                var demo = demoParser.Parse();
-                doParse(demo, filename);
+                doParse(demoParser, filename);
             }
         }
 
-
-        private void doParse(FMFile fmFile, string filename)
+        private T doParse<T>(BaseParser<T> parser, string filename) where T : FMFile, new()
         {
+            logger.LogInformation($"Parsing {filename}...");
+            var fmFile = parser.Parse();
+
             try
             {
                 string jsonFilename;
@@ -173,12 +164,14 @@ namespace Fm2ndParser
                 });
 
                 File.WriteAllText(jsonFilename, json);
+                return fmFile;
             }
             catch (LockedFileException)
             {
                 Console.WriteLine($"The file {filename} is locked, and can't be parsed.");
                 Console.ReadLine();
             }
+            return null;
         }
 
         private static void concatenateIBlocks(FMFile fmFile)
@@ -227,8 +220,10 @@ namespace Fm2ndParser
             }
         }
 
-        private static void exportResources(FMFile fmFile, string jsonFilename)
+        private void exportResources(FMFile fmFile, string jsonFilename)
         {
+            logger.LogInformation($"Exporting resources to {jsonFilename}...");
+
             var baseName = Path.GetFileNameWithoutExtension(jsonFilename);
             var outputDir = Path.Combine(Path.GetDirectoryName(jsonFilename) ?? string.Empty, baseName);
             Directory.CreateDirectory(outputDir);

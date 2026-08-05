@@ -2,6 +2,7 @@
 using CommandLine.Text;
 using Fm2ndParser.Common;
 using Fm2ndParser.Parsers;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,7 +21,17 @@ namespace Fm2ndParser
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-            
+            using var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder
+                    .SetMinimumLevel(LogLevel.Information)
+                    .AddSimpleConsole(options =>
+                    {
+                        options.SingleLine = true;
+                        options.TimestampFormat = "HH:mm:ss ";
+                    });
+            });
+
             var knownVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "parse",
@@ -39,10 +50,14 @@ namespace Fm2ndParser
                         opts.InputFiles.Single(),
                         opts.CleanUp,
                         opts.NewFiles,
-                        opts.ExportResources
+                        opts.ExportResources,
+                        loggerFactory.CreateLogger<ParseCommand>()
                     ).Execute(),
 
-                    (CompileOptions opts) => new CompileCommand(opts.InputFiles.Single()).Execute(),
+                    (CompileOptions opts) => new CompileCommand(
+                        opts.InputFiles.Single(),
+                        loggerFactory.CreateLogger<CompileCommand>()
+                    ).Execute(),
                     errs => HandleParseError(errs)
                 );
 

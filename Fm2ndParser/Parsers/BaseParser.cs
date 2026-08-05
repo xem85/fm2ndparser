@@ -30,11 +30,6 @@ namespace Fm2ndParser.Parsers
 
         public T Parse()
         {
-            return parse();
-        }
-
-        protected T parse()
-        {
             var file = File.ReadAllBytes(_filename);
             Span<byte> bytes = file;
 
