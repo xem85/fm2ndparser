@@ -1,6 +1,8 @@
-﻿namespace Fm2ndParser.Character.Story
+﻿using System.Collections.Generic;
+
+namespace Fm2ndParser.Character.Story
 {
-    class StoryEntryFight : StoryEntry
+    class FightStoryEntry : StoryEntry
     {
         public SkillReference Stage { get; set; }
         public byte NumbOfRounds { get; set; }
@@ -17,5 +19,6 @@
         public byte IfTimeIsOverValue { get; set; }
         public StoryCpuWinsPoints CpuWinPoints { get; set; }
         public byte CpuWinPointsValue { get; set; }
+        public ICollection<StoryEntryCpu> Cpus { get; set; }
     }
 }

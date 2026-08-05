@@ -7,7 +7,7 @@ namespace Fm2ndParser.Character
     public class Command
     {
         public string Name { get; set; }
-        public uint Time { get; set; }
+        public ushort Time { get; set; }
         public SkillReference AirSkill { get; set; }
         public SkillReference StandSkill { get; set; }
         public SkillReference StandFarSkill { get; set; }

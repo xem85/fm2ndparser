@@ -3,11 +3,11 @@
 namespace Fm2ndParser.Character
 {
     [Flags]
-    public enum CommandStepType
+    public enum CommandStepType : byte
     {
-        Press = 0b0010,
-        Repeat = 0b0110,
-        Charge = 0b1010,
-        Turn = 0b1110,
+        Press = 0,
+        Repeat = 1,
+        Charge = 2,
+        Turn = 3,
     }
 }

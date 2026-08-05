@@ -40,6 +40,7 @@ namespace Fm2ndParser.Parsers
             skipEmptyBytes(bytes, 1, ref offset);
             var time = getUInt32(bytes, ref offset);
             demo.Time = time;
+            demo.SkipWithInput = skipWithInput;
 
 
             skiRemaningEmptyBytes(bytes, ref offset);

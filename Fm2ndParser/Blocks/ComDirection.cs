@@ -4,7 +4,7 @@ namespace Fm2ndParser
 {
     [Flags]
 
-    public enum ComDirection
+    public enum ComDirection : byte
     {
         Free,
         Point,

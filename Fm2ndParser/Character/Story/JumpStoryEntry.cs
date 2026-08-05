@@ -4,6 +4,6 @@
     {
         public StoryEntryJump If { get; set; }
         public byte Value { get; set; }
-        public object GoToEvent { get; set; }
+        public sbyte GoToEvent { get; set; }
     }
 }

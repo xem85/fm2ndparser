@@ -94,6 +94,51 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
+
+        protected IList<Command> parseCommands(Span<byte> bytes, ref int offset)
+        {
+            var count = getUInt32(bytes, ref offset);
+
+            var commands = new List<Command>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var command = parseCommand(bytes, ref offset);
+                commands.Add(command);
+            }
+
+            return commands;
+        }
+
+        protected Command parseCommand(Span<byte> bytes, ref int offset)
+        {
+            var result = new Command
+            {
+                Name = getString(bytes, 32, ref offset),
+                Time = getUInt16(bytes, ref offset),
+                AirSkill = getSkill(bytes, ref offset),
+                StandSkill = getSkill(bytes, ref offset),
+                StandFarSkill = getSkill(bytes, ref offset),
+                CrouchedSkill = getSkill(bytes, ref offset),
+            };
+
+            var steps = new List<CommandStep>();
+            for (int i = 0; i < 10; i++)
+            {
+                var step = getCommandStep(bytes, ref offset);
+
+                steps.Add(step);
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                steps[i].Amount = getUInt16(bytes, ref offset);
+            }
+
+            result.Steps = steps;
+
+            return result;
+        }
+
         private StoryMode parseStoryMode(Span<byte> bytes, ref int offset)
         {
             // 206 bytes per entry
@@ -101,32 +146,28 @@ namespace Fm2ndParser.Parsers
             for (int i = 0; i < 100; i++)
             {
                 StoryEntry entry;
-                var type = getByte(bytes, ref offset);
+                var type = (StoryEntryType)getByte(bytes, ref offset);
                 switch (type)
                 {
-                    case 0:
+                    case StoryEntryType.None:
                         continue;
-                    // fight
-                    case 1:
+                    case StoryEntryType.Fight:
                         entry = parseFightStoryEntry(bytes, ref offset);
                         break;
-                    // demo
-                    case 2:
+                    case StoryEntryType.Demo:
                         entry = parseDemoStoryEntry(bytes, ref offset);
                         break;
-                    // if diversion
-                    case 3:
+                    case StoryEntryType.IfDiversion:
                         entry = parseJumpStoryEntry(bytes, ref offset);
                         break;
-                    // end
-                    case 4:
+                    case StoryEntryType.End:
                         entry = parseEndStoryEntry(bytes, ref offset);
                         break;
                     default:
                         throw new Exception($"Unknown story mode type: {type}");
 
                 }
-                entry.TypeId = type;
+                entry.Type = type;
                 entries.Add(entry);
             }
             return new StoryMode
@@ -164,14 +205,17 @@ namespace Fm2ndParser.Parsers
             var cpuWinPointsValue = getByte(bytes, ref offset);
 
             skipEmptyBytes(bytes, 4, ref offset);
+
+            var cpus = new List<StoryEntryCpu>();   
             for (int i = 0; i < 7; i++)
             {
                 var cpu = parseStoryEntryFightCpu(bytes, ref offset);
+                cpus.Add(cpu);
             }
 
-            var result = new StoryEntryFight
+            var result = new FightStoryEntry
             {
-                Type = "F",
+                //Type = "F",
                 Stage = stage > 0 ? new SkillReference
                 {
                     Number = stage,
@@ -190,7 +234,8 @@ namespace Fm2ndParser.Parsers
                 IfTimeIsOverCpu = ifTimeIsOverCpu,
                 IfTimeIsOverValue = ifTimeIsOverValue,
                 CpuWinPoints = cpuWinPoints,
-                CpuWinPointsValue = cpuWinPointsValue
+                CpuWinPointsValue = cpuWinPointsValue,
+                Cpus = cpus,
             };
 
             return result;
@@ -285,7 +330,7 @@ namespace Fm2ndParser.Parsers
             var demoIndex = getUInt16(bytes, ref offset);
             var result = new DemoStoryEntry
             {
-                Type = "D",
+                //Type = "D",
                 Demo = demoIndex > 0 ? new SkillReference
                 {
                     Number = demoIndex,
@@ -301,7 +346,7 @@ namespace Fm2ndParser.Parsers
         {
             var result = new JumpStoryEntry
             {
-                Type = "J",
+                //Type = "J",
                 If = (StoryEntryJump)getByte(bytes, ref offset),
                 Value = getByte(bytes, ref offset)
             };
@@ -317,14 +362,14 @@ namespace Fm2ndParser.Parsers
             skipEmptyBytes(bytes, 205, ref offset);
             var result = new EndStoryEntry
             {
-                Type = "E"
+                //Type = "E"
             };
             return result;
         }
 
         private PlayerSettings parsePlayerSettings(Span<byte> bytes, ref int offset)
         {
-            var age = getInt32(bytes, ref offset);
+            var age = getUInt32(bytes, ref offset);
             var gender = (Gender)getByte(bytes, ref offset);
             skipEmptyBytes(bytes, 1740, ref offset);
 
@@ -397,19 +442,12 @@ namespace Fm2ndParser.Parsers
                     Name = name,
                 };
                 var airFlag = getByte(bytes, ref offset);
-                var characterInAir = isFlagOn(airFlag, 0);
-                var enemyInAir = isFlagOn(airFlag, 1);
+                cpu.CharacterInAir = isFlagOn(airFlag, 0);
+                cpu.EnemyInAir = isFlagOn(airFlag, 1);
 
-                var probability = getByte(bytes, ref offset);
-                var close = getUInt16(bytes, ref offset);
-                var far = getUInt16(bytes, ref offset);
-
-
-                cpu.Probability = probability;
-                cpu.Close = close;
-                cpu.Far = far;
-                cpu.CharacterInAir = characterInAir;
-                cpu.EnemyInAir = enemyInAir;
+                cpu.Probability = getByte(bytes, ref offset);
+                cpu.Close = getUInt16(bytes, ref offset);
+                cpu.Far = getUInt16(bytes, ref offset);
 
                 skipEmptyBytes(bytes, 3, ref offset);
 
@@ -420,7 +458,7 @@ namespace Fm2ndParser.Parsers
 
                     var directionFlag = getByte(bytes, ref offset);
                     var activeFlag = getByte(bytes, ref offset);
-                    var commandIndex = getUInt16(bytes, ref offset);
+                    var command = getSkill(bytes, ref offset);
                     var amount = getUInt16(bytes, ref offset);
 
                     var step = new CpuCommandStep
@@ -429,11 +467,7 @@ namespace Fm2ndParser.Parsers
                         Active = isFlagOn(activeFlag, 5),
                         Direction = (ComDirection)(directionFlag & 0b00001111),
                         Amount = amount,
-                        Command = commandIndex > 0 ? new SkillReference
-                        {
-                            Number = commandIndex,
-                            Name = commands.Skip(commandIndex - 1).First().Name
-                        } : null,
+                        Command = command
                     };
                     steps.Add(step);
                 }
@@ -445,57 +479,32 @@ namespace Fm2ndParser.Parsers
 
         private PlayerBuiltInSkills parseDefaultSkillsIndex(Span<byte> bytes, ref int offset)
         {
-            var shSkillIdxStanding = getUInt16(bytes, ref offset);
-            var shSkillIdxForward = getUInt16(bytes, ref offset);
-            var shSkillIdxBackward = getUInt16(bytes, ref offset);
-            var shSkillIdxJumpUp = getUInt16(bytes, ref offset);
-            var shSkillIdxFrontJump = getUInt16(bytes, ref offset);
-            var shSkillIdxBackJump = getUInt16(bytes, ref offset);
-            var shSkillIdxFalling = getUInt16(bytes, ref offset);
-            var shSkillIdxMidCrouch = getUInt16(bytes, ref offset);
-            var shSkillIdxCrouching = getUInt16(bytes, ref offset);
-            var shSkillIdxStandFromCrouch = getUInt16(bytes, ref offset);
-            var shSkillIdxCrouchAdvance = getUInt16(bytes, ref offset);
-            var shSkillIdxCrouchRetreat = getUInt16(bytes, ref offset);
-            var shSkillIdxTurnStanding = getUInt16(bytes, ref offset);
-            var shSkillIdxTurnCrouching = getUInt16(bytes, ref offset);
-            var shSkillIdxButtonGuardStand = getUInt16(bytes, ref offset);
-            var shSkillIdxButtonGuardCrouch = getUInt16(bytes, ref offset);
-            var shSkillIdxButtonGuardAir = getUInt16(bytes, ref offset);
-            var shSkillIdxStart = getUInt16(bytes, ref offset);
-            var shSkillIdxVictory = getUInt16(bytes, ref offset);
-            var shSkillIdxLoss = getUInt16(bytes, ref offset);
-            var shSkillIdxDraw = getUInt16(bytes, ref offset);
-            var shSkillIdxCharSelectPic = getUInt16(bytes, ref offset);
-            var shSkillIdxStageFacePic = getUInt16(bytes, ref offset);
-            var shSkillIdxRI = getUInt16(bytes, ref offset);
-
             var result = new PlayerBuiltInSkills
             {
-                Standing = shSkillIdxStanding,
-                Forward = shSkillIdxForward,
-                Backward = shSkillIdxBackward,
-                JumpUp = shSkillIdxJumpUp,
-                FrontJump = shSkillIdxFrontJump,
-                BackJump = shSkillIdxBackJump,
-                Falling = shSkillIdxFalling,
-                MidCrouch = shSkillIdxMidCrouch,
-                Crouching = shSkillIdxCrouching,
-                StandFromCrouch = shSkillIdxStandFromCrouch,
-                CrouchAdvance = shSkillIdxCrouchAdvance,
-                CrouchRetreat = shSkillIdxCrouchRetreat,
-                TurnStanding = shSkillIdxTurnStanding,
-                TurnCrouching = shSkillIdxTurnCrouching,
-                ButtonGuardStand = shSkillIdxButtonGuardStand,
-                ButtonGuardCrouch = shSkillIdxButtonGuardCrouch,
-                ButtonGuardAir = shSkillIdxButtonGuardAir,
-                Start = shSkillIdxStart,
-                Victory = shSkillIdxVictory,
-                Loss = shSkillIdxLoss,
-                Draw = shSkillIdxDraw,
-                CharSelectPic = shSkillIdxCharSelectPic,
-                StageFacePic = shSkillIdxStageFacePic,
-                RI = shSkillIdxRI,
+                Standing = getUInt16(bytes, ref offset),
+                Forward = getUInt16(bytes, ref offset),
+                Backward = getUInt16(bytes, ref offset),
+                JumpUp = getUInt16(bytes, ref offset),
+                FrontJump = getUInt16(bytes, ref offset),
+                BackJump = getUInt16(bytes, ref offset),
+                Falling = getUInt16(bytes, ref offset),
+                MidCrouch = getUInt16(bytes, ref offset),
+                Crouching = getUInt16(bytes, ref offset),
+                StandFromCrouch = getUInt16(bytes, ref offset),
+                CrouchAdvance = getUInt16(bytes, ref offset),
+                CrouchRetreat = getUInt16(bytes, ref offset),
+                TurnStanding = getUInt16(bytes, ref offset),
+                TurnCrouching = getUInt16(bytes, ref offset),
+                ButtonGuardStand = getUInt16(bytes, ref offset),
+                ButtonGuardCrouch = getUInt16(bytes, ref offset),
+                ButtonGuardAir = getUInt16(bytes, ref offset),
+                Start = getUInt16(bytes, ref offset),
+                Victory = getUInt16(bytes, ref offset),
+                Loss = getUInt16(bytes, ref offset),
+                Draw = getUInt16(bytes, ref offset),
+                CharSelectPic = getUInt16(bytes, ref offset),
+                StageFacePic = getUInt16(bytes, ref offset),
+                RI = getUInt16(bytes, ref offset),
             };
             return result;
         }

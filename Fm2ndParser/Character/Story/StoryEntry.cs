@@ -1,8 +1,7 @@
 ﻿namespace Fm2ndParser.Character.Story
 {
-    public class StoryEntry
+    public abstract class StoryEntry
     {
-        public byte TypeId { get; set; }
-        public string Type { get; set; }
+        public StoryEntryType Type { get; set; }
     }
 }

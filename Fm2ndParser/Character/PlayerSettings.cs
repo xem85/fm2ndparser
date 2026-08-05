@@ -2,7 +2,7 @@
 {
     public class PlayerSettings
     {
-        public int Age { get; set; }
+        public uint Age { get; set; }
         public Gender Gender { get; set; }
         public ushort SideHPYPos { get; set; }
         public ushort Interval { get; set; }

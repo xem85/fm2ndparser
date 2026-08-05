@@ -24,7 +24,7 @@ namespace Fm2ndParser
             var knownVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "parse",
-                "generate"
+                "compile"
             };
 
             if (args.Length > 0 && !args[0].StartsWith("-") && !knownVerbs.Contains(args[0]))
@@ -33,7 +33,7 @@ namespace Fm2ndParser
                 args = new[] { "parse" }.Concat(args).ToArray();
             }
 
-            var parsed = Parser.Default.ParseArguments<ParseOptions, GenerateOptions>(args)
+            var parsed = Parser.Default.ParseArguments<ParseOptions, CompileOptions>(args)
                 .MapResult(
                     (ParseOptions opts) => new ParseCommand(
                         opts.InputFiles.Single(),
@@ -42,7 +42,7 @@ namespace Fm2ndParser
                         opts.ExportResources
                     ).Execute(),
 
-                    (GenerateOptions opts) => new GenerateCommand(opts.InputFiles.Single()).Execute(),
+                    (CompileOptions opts) => new CompileCommand(opts.InputFiles.Single()).Execute(),
                     errs => HandleParseError(errs)
                 );
 

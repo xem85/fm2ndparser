@@ -260,6 +260,7 @@ namespace Fm2ndParser
                             Directory.CreateDirectory(dir);
                             var altImagePath = Path.Combine(dir, filename);
                             var bmpStream = ToIndexedBmpStream(image, altPalette);
+
                             File.WriteAllBytes(altImagePath, bmpStream.ToArray());
                         }
                     }

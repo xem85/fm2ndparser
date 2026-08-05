@@ -64,7 +64,7 @@ namespace Fm2ndParser.Parsers
 
             var result = new T
             {
-                Type = type,
+                Type = Path.GetExtension(_filename).ToLowerInvariant().Skip(1).ToString(),
                 Name = name,
                 Skills = _skills,
                 Images = images,
@@ -90,7 +90,7 @@ namespace Fm2ndParser.Parsers
 
         protected void readSkillsBlocks(IList<Skill> skills, Span<byte> bytes, ref int offset)
         {
-            var blocksCount = getInt32(bytes, ref offset);
+            var blocksCount = getUInt32(bytes, ref offset);
 
             var blocks = new List<Block>();
             var blocksData = new List<byte[]>();
@@ -532,7 +532,7 @@ namespace Fm2ndParser.Parsers
             var block = new GCBlock
             {
                 // 21
-                Type = "GP",
+                Type = "GC",
                 Data = data.ToArray(),
                 PlayerLifeGauge = getInt16(data, ref offset),
                 PlayerSpecialGauge = getInt16(data, ref offset),
@@ -792,7 +792,7 @@ namespace Fm2ndParser.Parsers
                 Time = getByte(data, ref offset),
             };
 
-            var steps = new List<BlockCommandStep>();
+            var steps = new List<CommandStep>();
             for (int i = 0; i < 5; i++)
             {
                 var step = getCommandStep(data, ref offset);
@@ -821,25 +821,24 @@ namespace Fm2ndParser.Parsers
             return block;
         }
 
-        protected BlockCommandStep getCommandStep(Span<byte> data, ref int offset)
+        protected CommandStep getCommandStep(Span<byte> data, ref int offset)
         {
-            var step = new BlockCommandStep();
-            byte flags;
-            ushort value;
-            getSplittedData2(data, ref offset, out flags, out value);
-            step.Direction = (ComDirection)value;
+            var flags1 = getByte(data, ref offset);
+            var flags2 = getByte(data, ref offset);
 
-            step.A = isFlagOn(flags, 0);
-            step.B = isFlagOn(flags, 1);
-            step.C = isFlagOn(flags, 2);
-            step.D = isFlagOn(flags, 3);
-
-            flags = getByte(data, ref offset);
-            step.E = isFlagOn(flags, 0);
-            step.F = isFlagOn(flags, 1);
-
-            step.Continue = isFlagOn(flags, 4);
-            step.Active = isFlagOn(flags, 5);
+            var step = new CommandStep()
+            {
+                Direction = (ComDirection)(flags1 & 0b00001111),
+                A = isFlagOn(flags1, 4),
+                B = isFlagOn(flags1, 5),
+                C = isFlagOn(flags1, 6),
+                D = isFlagOn(flags1, 7),
+                E = isFlagOn(flags2, 0),
+                F = isFlagOn(flags2, 1),
+                Continue = isFlagOn(flags2, 4),
+                Active = isFlagOn(flags2, 5),
+                Type = (CommandStepType)((flags2 & 0b11000000) >> 6),
+            };
             return step;
         }
 
@@ -860,20 +859,25 @@ namespace Fm2ndParser.Parsers
                 var height = getUInt32(bytes, ref offset);
                 var paletteType = getUInt32(bytes, ref offset); // 0: common, 1: private
                 var packedSize = getUInt32(bytes, ref offset);
+                var isPacked = packedSize != 0;
 
                 byte[] imageData = Array.Empty<byte>();
 
-                if (packedSize != 0)
+                var unpackedSize = checked((uint)(width * height + (paletteType == 1 ? 0x400u : 0u)));
+
+                var sourceSize = isPacked ? packedSize : unpackedSize;
+
+                if (width == 0 && height == 0)
+                    sourceSize = 0;
+
+                var sourceData = getWord(bytes, (int)sourceSize, ref offset).ToArray();
+
+                if (isPacked)
                 {
-                    var packed = getWord(bytes, (int)packedSize, ref offset).ToArray();
-                    var unpackedSize = checked((int)(width * height + (paletteType == 1 ? 0x400u : 0u)));
-                    imageData = extractSprite(packed, unpackedSize);
+                    imageData = ImageCompression.Extract(sourceData, unpackedSize);
                 }
-                else if (width != 0 && height != 0)
-                {
-                    var rawSize = checked((int)(width * height + (paletteType == 1 ? 0x400u : 0u)));
-                    imageData = getWord(bytes, rawSize, ref offset).ToArray();
-                }
+                else
+                    imageData = sourceData;
 
                 images.Add(new ImageResource
                 {
@@ -883,6 +887,7 @@ namespace Fm2ndParser.Parsers
                     PaletteType = (PaletteType)paletteType,
                     PackedSize = packedSize,
                     Offset = entryOffset,
+                    PackedData = isPacked ? sourceData : imageData,
                     Data = imageData,
                 });
             }
@@ -905,7 +910,7 @@ namespace Fm2ndParser.Parsers
 
         protected ICollection<SoundResource> readSounds(Span<byte> bytes, ref int offset)
         {
-            var count = getInt32(bytes, ref offset);
+            var count = getUInt32(bytes, ref offset);
             var result = new List<SoundResource>();
 
             for (int i = 0; i < count; i++)
@@ -975,107 +980,6 @@ namespace Fm2ndParser.Parsers
 
 
         #endregion
-
-        protected byte[] extractSprite(byte[] source, int destinationSize)
-        {
-            var destination = new byte[destinationSize];
-
-            var pos = 0;
-            var pos2 = 0;
-
-            while (pos < source.Length && pos2 < destinationSize)
-            {
-                uint tmp = source[pos];
-                var tmp2 = tmp >> 6;
-                tmp = tmp & 0x3f;
-
-                if (tmp == 0)
-                {
-                    pos = pos + 1;
-                    if (pos >= source.Length)
-                        break;
-
-                    tmp = source[pos];
-                    if (tmp != 0)
-                    {
-                        tmp = tmp + 0x3f;
-                    }
-                    else
-                    {
-                        if (pos + 3 >= source.Length)
-                            break;
-
-                        tmp = BitConverter.ToUInt16(source, pos + 1);
-                        var tmp3 = (uint)(source[pos + 3] << 0x10);
-                        tmp = tmp + tmp3 + 0x13f;
-                        pos = pos + 3;
-                    }
-                }
-
-                switch (tmp2)
-                {
-                    case 0:
-                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
-                        {
-                            destination[pos2++] = 0;
-                        }
-                        break;
-
-                    case 1:
-                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
-                        {
-                            pos = pos + 1;
-                            if (pos >= source.Length)
-                                break;
-
-                            destination[pos2++] = source[pos];
-                        }
-                        break;
-
-                    case 2:
-                        pos = pos + 1;
-                        if (pos >= source.Length)
-                            break;
-
-                        var repeatedByte = source[pos];
-                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
-                        {
-                            destination[pos2++] = repeatedByte;
-                        }
-                        break;
-
-                    case 3:
-                        pos = pos + 1;
-                        if (pos >= source.Length)
-                            break;
-
-                        var copyDistance = (int)source[pos];
-                        if (copyDistance == 0)
-                        {
-                            pos = pos + 1;
-                            if (pos >= source.Length)
-                                break;
-
-                            copyDistance = (source[pos] + 1) << 8;
-                            pos = pos + 1;
-                        }
-
-                        var readPos = pos2 - copyDistance;
-                        for (int i = 0; i < tmp && pos2 < destinationSize; i++)
-                        {
-                            if (readPos < 0 || readPos >= destinationSize)
-                                break;
-
-                            destination[pos2++] = destination[readPos++];
-                        }
-                        break;
-                }
-
-                pos = pos + 1;
-            }
-
-            return destination;
-        }
 
         protected SkillReference getSkill(Span<byte> data, ref int offset)
         {
@@ -1163,7 +1067,26 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-
+        /// <summary>
+        /// Legge 2 byte consecutivi dallo stream binario e li divide in due parti logiche:
+        /// i bit alti del secondo byte vengono restituiti in <paramref name="flags"/>,
+        /// mentre i 5 bit bassi del secondo byte, insieme al primo byte, vengono usati
+        /// per ricostruire un valore numerico a 16 bit restituito in <paramref name="value"/>.
+        /// </summary>
+        /// <param name="data">
+        /// Buffer binario sorgente da cui leggere i dati.
+        /// </param>
+        /// <param name="offset">
+        /// Posizione corrente nel buffer. Viene avanzata di 2 byte da <c>getWord</c>.
+        /// </param>
+        /// <param name="flags">
+        /// Restituisce i flag contenuti nei bit alti del secondo byte.
+        /// I 5 bit bassi vengono esclusi perché appartengono al valore numerico.
+        /// </param>
+        /// <param name="value">
+        /// Restituisce il valore numerico ottenuto dai 2 byte letti,
+        /// ma con il secondo byte mascherato in modo da conservare solo i suoi 5 bit bassi.
+        /// </param>
         protected void getSplittedData(Span<byte> data, ref int offset, out byte flags, out ushort value)
         {
             var word = getWord(data, 2, ref offset);
@@ -1176,16 +1099,7 @@ namespace Fm2ndParser.Parsers
             value = BitConverter.ToUInt16(iWord);
         }
 
-        protected void getSplittedData2(Span<byte> data, ref int offset, out byte flags, out ushort value)
-        {
-            var b = getByte(data, ref offset);
-
-            var iMask = CreateBitMask(0, 4);
-            flags = (byte)((b & ~iMask) / 16);
-            value = (byte)(b & iMask);
-        }
-
-        protected static uint CreateBitMask(int start, int length)
+        public static uint CreateBitMask(int start, int length)
         {
             uint mask = 0xffffffff;
             mask >>= 32 - length;
@@ -1270,65 +1184,6 @@ namespace Fm2ndParser.Parsers
             Debug.Assert(word == 0);
 
             result.Type = getUInt32(bytes, ref offset);
-
-            return result;
-        }
-
-        protected IList<Command> parseCommands(Span<byte> bytes, ref int offset)
-        {
-            var count = getInt32(bytes, ref offset);
-
-            var commands = new List<Command>();
-
-            for (int i = 0; i < count; i++)
-            {
-                var command = parseCommand(bytes, ref offset);
-                commands.Add(command);
-            }
-
-            return commands;
-        }
-
-        protected Command parseCommand(Span<byte> bytes, ref int offset)
-        {
-            var result = new Command
-            {
-                Name = getString(bytes, 32, ref offset),
-                Time = getUInt16(bytes, ref offset),
-                AirSkill = getSkill(bytes, ref offset),
-                StandSkill = getSkill(bytes, ref offset),
-                StandFarSkill = getSkill(bytes, ref offset),
-                CrouchedSkill = getSkill(bytes, ref offset),
-            };
-
-            var steps = new List<CommandStep>();
-            for (int i = 0; i < 10; i++)
-            {
-
-                var flags1 = getByte(bytes, ref offset);
-                var flags2 = getByte(bytes, ref offset);
-
-                var step = new CommandStep()
-                {
-                    A = isFlagOn(flags1, 4),
-                    B = isFlagOn(flags1, 5),
-                    C = isFlagOn(flags1, 6),
-                    D = isFlagOn(flags1, 7),
-                    E = isFlagOn(flags2, 0),
-                    F = isFlagOn(flags2, 1),
-                    Continue = isFlagOn(flags2, 4),
-                    Active = isFlagOn(flags2, 5),
-                    Direction = (ComDirection)(flags1 & 0b00001111),
-                    Type = (CommandStepType)(flags1 & 0b11100000),
-                };
-                steps.Add(step);
-            }
-            for (int i = 0; i < 10; i++)
-            {
-                steps[i].Amount = getUInt16(bytes, ref offset);
-            }
-
-            result.Steps = steps;
 
             return result;
         }
