@@ -28,9 +28,9 @@ namespace Fm2ndParser.Compilers
             writeCharacters(writer);
             writeHitJunctions(writer);
 
-            writeUInt32(writer, 2);
+            writeBytes(writer, [0x02]);
 
-            writeZeros(writer, 1);
+            writeZeros(writer, 4);
 
             writeStiffTime(writer);
             writeStages(writer);

@@ -27,10 +27,10 @@ namespace Fm2ndParser.Parsers
             _kgt.HitJunctions = parseHitJunctions(bytes, ref offset);
 
             // unknown
-            var unknown = getUInt32(bytes, ref offset);
+            var unknown = getInt8(bytes, ref offset);
             Debug.Assert(unknown == 2);
 
-            skipEmptyBytes(bytes, 1, ref offset);
+            skipEmptyBytes(bytes, 4, ref offset);
 
             // offsets
             var stiffTime = parseStiffTime(bytes, ref offset);

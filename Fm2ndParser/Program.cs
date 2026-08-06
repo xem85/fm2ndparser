@@ -35,7 +35,7 @@ namespace Fm2ndParser
             var knownVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "parse",
-                "compile"
+                "compile",
             };
 
             if (args.Length > 0 && !args[0].StartsWith("-") && !knownVerbs.Contains(args[0]))

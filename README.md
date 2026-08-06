@@ -2,10 +2,10 @@
 
 Parser CLI/library for **Fighter Maker 2nd** files.
 
-Main goal:
-- read FM2nd files as completely as possible
+Main goals:
+- read FM2nd files completely
 - export to readable, versionable JSON
-- later support binary generation from JSON
+- compile binary files back from JSON
 
 ## Supported files
 
@@ -28,21 +28,68 @@ dotnet build
 
 The compiled output is available in the `Publish` folder.
 
+## CLI commands
+
+The CLI supports the following commands:
+
+- `parse`
+- `compile`
+
+If no command is specified, the default command is `parse`.
+
 ## Usage
 
+### Parse binary files into JSON
+
 Parse a project starting from `.kgt`:
+
+```bash
+Fm2ndParser parse game.kgt
+```
+
+The default command is `parse`, so this is equivalent:
 
 ```bash
 Fm2ndParser game.kgt
 ```
 
-> ⚠️ Use this tool at your own risk. The author is not responsible for any damage or data loss.
+Parse a single file:
 
-Useful options:
+```bash
+Fm2ndParser parse character.player
+```
+
+Useful options for `parse`:
 
 - `--clean-up` (`-c`): cleaner JSON for comparison
 - `--new-files` (`-n`): create new JSON files instead of overwriting
 - `--export-resources` (`-x`): export embedded images/sounds
+
+Examples:
+
+```bash
+Fm2ndParser parse game.kgt
+Fm2ndParser parse character.player --clean-up
+Fm2ndParser parse stage.stage --export-resources
+```
+
+### Compile JSON into binary files
+
+Compile a JSON file back to FM2nd binary format:
+
+```bash
+Fm2ndParser compile character.json
+```
+
+Examples:
+
+```bash
+Fm2ndParser compile character.json
+Fm2ndParser compile stage.json
+Fm2ndParser compile game.json
+```
+
+> ⚠️ Use this tool at your own risk. The author is not responsible for any damage or data loss.
 
 ## Documentation
 
@@ -54,8 +101,8 @@ Detailed reference lives in [`docs/`](docs/README.md):
 
 ## Current status
 
-- Parsing/export is the current focus
-- JSON -> binary write support is planned
+- Parsing/export is supported
+- JSON -> binary compilation is supported
 - Few formats/fields may still be incomplete
 
 ## Contributing
