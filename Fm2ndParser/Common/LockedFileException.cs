@@ -6,15 +6,8 @@ namespace Fm2ndParser.Common
     [Serializable]
     class LockedFileException : Exception
     {
-        public LockedFileException()
-        {
-        }
-
-        public LockedFileException(string message) : base(message)
-        {
-        }
-
-        public LockedFileException(string message, Exception innerException) : base(message, innerException)
+        public LockedFileException(string filename)
+            : base($"The file {filename} is locked, and can't be parsed.")
         {
         }
     }

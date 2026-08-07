@@ -12,6 +12,7 @@ namespace Fm2ndParser.Parsers
 {
     public class StageParser : BaseParser<StageFile>
     {
+        public override string FileExtension => "stage";
 
         public StageParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
@@ -37,7 +38,7 @@ namespace Fm2ndParser.Parsers
                 Name = stage.Sounds.Skip(bgm).First().Name,
             };
          
-            skiRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes(bytes, ref offset);
             return stage;
         }
     }

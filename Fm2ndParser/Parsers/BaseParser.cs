@@ -22,6 +22,8 @@ namespace Fm2ndParser.Parsers
         protected IList<Skill> _skills;
         protected IList<SkillBlockReference> _skillBlockRefs = new List<SkillBlockReference>();
 
+        public abstract string FileExtension { get; }
+
         public BaseParser(string filename, KGTFile kgt)
         {
             _filename = filename;
@@ -45,7 +47,9 @@ namespace Fm2ndParser.Parsers
             var loaded = loadedFlags == 1;
 
             if (type.StartsWith("2DKGT2G"))
-                throw new LockedFileException();
+                throw new LockedFileException(_filename);
+            if (!type.StartsWith("2DKGT2K"))
+                throw new InvalidDataException($"Not a valid Fighter Maker 2nd file: {_filename}");
 
             var name = getString(bytes, 256, ref offset);
 
@@ -74,6 +78,7 @@ namespace Fm2ndParser.Parsers
 
             return result;
         }
+
 
         protected string getString(Span<byte> bytes, int length, ref int offset)
         {
@@ -1098,7 +1103,7 @@ namespace Fm2ndParser.Parsers
             iWord[1] = (byte)(word[1] & iMask);
             value = BitConverter.ToUInt16(iWord);
         }
-          
+
         public static uint CreateBitMask(int start, int length)
         {
             uint mask = 0xffffffff;
@@ -1204,7 +1209,7 @@ namespace Fm2ndParser.Parsers
             }
         }
 
-        protected void skiRemaningEmptyBytes(Span<byte> bytes, ref int offset)
+        protected void skipRemaningEmptyBytes(Span<byte> bytes, ref int offset)
         {
             // the remaning are all 0s
             skipEmptyBytes(bytes, bytes.Length - offset, ref offset);

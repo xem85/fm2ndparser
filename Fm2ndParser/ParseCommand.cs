@@ -30,13 +30,13 @@ namespace Fm2ndParser
             }
         }
 
-        [Value(0, Required = true, Hidden = true, HelpText = "Kgt input file to be processed.")]
+        [Value(0, Required = true, Hidden = true, HelpText = "Input file to be processed. Allowed extensions are .kgt, .player, .stage, and .demo.")]
         public IEnumerable<string> InputFiles { get; set; }
 
-        [Option('n', "new-files",
-          Default = false,
-          HelpText = "Instead of replacing the existing json, it creates another one.")]
-        public bool NewFiles { get; set; }
+        [Option('o', "output",
+          Default = null,
+          HelpText = "Specify output folder.")]
+        public string Output { get; set; }
 
         [Option('c', "clean-up",
           Default = false,
@@ -53,21 +53,24 @@ namespace Fm2ndParser
     {
         private string inputFile;
         private bool cleanUp;
-        private bool overwrite;
+        private string output;
         private bool doExportResources;
         private ILogger<ParseCommand> logger;
 
-        public ParseCommand(string inputFile, bool cleanUp, bool newFile, bool doExportResources, ILogger<ParseCommand> logger)
+        public ParseCommand(ParseOptions options, ILogger<ParseCommand> logger)
         {
-            this.inputFile = inputFile;
-            this.cleanUp = cleanUp;
-            this.overwrite = !newFile;
-            this.doExportResources = doExportResources;
+            this.inputFile = options.InputFiles.Single();
+            this.cleanUp = options.CleanUp;
+            this.output = options.Output ?? generateDefaultOutputFolder();
+            this.doExportResources = options.ExportResources;
             this.logger = logger;
         }
 
         public async Task Execute()
         {
+            if (Directory.Exists(output))
+                throw new Exception($"Output folder '{output}' already exists. Please specify a different output folder.");
+
             var extension = Path.GetExtension(inputFile).ToLowerInvariant();
 
             switch (extension)
@@ -88,6 +91,11 @@ namespace Fm2ndParser
                     Console.WriteLine($"Unsupported file type '{extension}'. Expected .kgt, .player, .stage or .demo.");
                     break;
             }
+        }
+
+        string generateDefaultOutputFolder()
+        {
+            return DateTime.Now.ToString("yyyyMMdd_HHmmss");
         }
 
         private void parseKgt(string kgtFile)
@@ -123,54 +131,38 @@ namespace Fm2ndParser
             logger.LogInformation($"Parsing {filename}...");
             var fmFile = parser.Parse();
 
-            try
+            string jsonFilename = $"{Path.GetFileNameWithoutExtension(filename)}.{parser.FileExtension}.json";
+            jsonFilename = Path.Combine(output, jsonFilename);
+            if (File.Exists(jsonFilename))
+                throw new Exception("File exists: " + jsonFilename);
+
+            if (doExportResources)
+                exportResources(fmFile, jsonFilename);
+
+            var contractResolver = new DynamicContractResolver()
             {
-                string jsonFilename;
-                if (overwrite)
-                {
-                    jsonFilename = getJsonFilename(filename);
-                }
-                else
-                {
-                    jsonFilename = getFreeJsonFilename(filename);
-                    if (File.Exists(jsonFilename))
-                    {
-                        throw new Exception("File exists: " + jsonFilename);
-                    }
-                }
-                if (doExportResources)
-                    exportResources(fmFile, jsonFilename);
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
 
-                var contractResolver = new DynamicContractResolver()
-                {
-                    NamingStrategy = new CamelCaseNamingStrategy()
-                };
-
-                if (cleanUp)
-                {
-                    concatenateIBlocks(fmFile);
-                    contractResolver.AddPropertyToExclude(typeof(ImageResource), "data");
-                    contractResolver.AddPropertyToExclude(typeof(ImageResource), "offset");
-                    contractResolver.AddPropertyToExclude(typeof(SoundResource), "data");
-                    contractResolver.AddPropertyToExclude(typeof(SkillReference), "number");
-                    contractResolver.AddPropertyToExclude(typeof(SkillBlockReference), "number");
-                    contractResolver.AddPropertyToExclude(typeof(Skill), "index");
-                }
-
-                var json = JsonConvert.SerializeObject(fmFile, new JsonSerializerSettings
-                {
-                    ContractResolver = contractResolver,
-                    Formatting = Formatting.Indented
-                });
-
-                File.WriteAllText(jsonFilename, json);
-                return fmFile;
-            }
-            catch (LockedFileException)
+            if (cleanUp)
             {
-                Console.WriteLine($"The file {filename} is locked, and can't be parsed.");
-                Console.ReadLine();
+                concatenateIBlocks(fmFile);
+                contractResolver.AddPropertyToExclude(typeof(ImageResource), "data");
+                contractResolver.AddPropertyToExclude(typeof(ImageResource), "offset");
+                contractResolver.AddPropertyToExclude(typeof(SoundResource), "data");
+                contractResolver.AddPropertyToExclude(typeof(SkillReference), "number");
+                contractResolver.AddPropertyToExclude(typeof(SkillBlockReference), "number");
+                contractResolver.AddPropertyToExclude(typeof(Skill), "index");
             }
+
+            var json = JsonConvert.SerializeObject(fmFile, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver,
+                Formatting = Formatting.Indented
+            });
+
+            File.WriteAllText(jsonFilename, json);
+            return fmFile;
             return null;
         }
 
@@ -427,23 +419,5 @@ namespace Fm2ndParser
             return bmpPalette;
         }
         #endregion
-
-        private static string getJsonFilename(string filename)
-        {
-            return Path.GetFileNameWithoutExtension(filename) + ".json";
-        }
-
-        private static string getFreeJsonFilename(string filename)
-        {
-            int i = 0;
-            var jsonFilename = getJsonFilename(filename);
-            while (File.Exists(jsonFilename))
-            {
-                jsonFilename = $"{Path.GetFileNameWithoutExtension(filename)}_{i}.json";
-                i++;
-            }
-
-            return jsonFilename;
-        }
     }
 }

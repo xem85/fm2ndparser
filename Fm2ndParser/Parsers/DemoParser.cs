@@ -12,6 +12,7 @@ namespace Fm2ndParser.Parsers
 {
     public class DemoParser : BaseParser<DemoFile>
     {
+        public override string FileExtension => "demo";
 
         public DemoParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
@@ -37,7 +38,7 @@ namespace Fm2ndParser.Parsers
             demo.SkipWithInput = skipWithInput;
 
 
-            skiRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes(bytes, ref offset);
             return demo;
         }
         protected override SettingsType getSettingsType(uint skillIdx)

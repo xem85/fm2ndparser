@@ -12,6 +12,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Fm2ndParser
@@ -38,9 +39,9 @@ namespace Fm2ndParser
         private string kgtFile;
         private ILogger<CompileCommand> logger;
 
-        public CompileCommand(string kgtFile, ILogger<CompileCommand> logger)
+        public CompileCommand(CompileOptions opts, ILogger<CompileCommand> logger)
         {
-            this.kgtFile = kgtFile;
+            this.kgtFile = opts.InputFiles.Single();
             this.logger = logger;
         }
         public async Task Execute()

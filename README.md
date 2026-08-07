@@ -59,10 +59,13 @@ Parse a single file:
 Fm2ndParser parse character.player
 ```
 
+By default, output files are written to a target folder named with the current timestamp, so existing output is not overwritten. The generated JSON files use the same name as the input file with `.json` appended.
+
+
 Useful options for `parse`:
 
 - `--clean-up` (`-c`): cleaner JSON for comparison
-- `--new-files` (`-n`): create new JSON files instead of overwriting
+- `--output` (`-o`): specify the output folder instead of the default timestamped folder
 - `--export-resources` (`-x`): export embedded images/sounds
 
 Examples:
@@ -71,6 +74,7 @@ Examples:
 Fm2ndParser parse game.kgt
 Fm2ndParser parse character.player --clean-up
 Fm2ndParser parse stage.stage --export-resources
+Fm2ndParser parse demo.demo --output output\demo_export
 ```
 
 ### Compile JSON into binary files

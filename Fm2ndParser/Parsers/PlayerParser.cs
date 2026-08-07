@@ -16,6 +16,7 @@ namespace Fm2ndParser.Parsers
 {
     public class PlayerParser : BaseParser<PlayerFile>
     {
+        public override string FileExtension => "player";
 
         public PlayerParser(string filename, KGTFile kgt) : base(filename, kgt)
         {
@@ -48,7 +49,7 @@ namespace Fm2ndParser.Parsers
 
             player.StoryMode = parseStoryMode(bytes, ref offset);
 
-            skiRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes(bytes, ref offset);
 
             return player;
         }

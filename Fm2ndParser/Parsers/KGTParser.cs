@@ -12,6 +12,8 @@ namespace Fm2ndParser.Parsers
 {
     public class KGTParser : BaseParser<KGTFile>
     {
+        public override string FileExtension => "kgt";
+
         public KGTParser(string filename) : base(filename, null)
         {
         }
@@ -64,7 +66,7 @@ namespace Fm2ndParser.Parsers
 
             parseCharactersSettings(bytes, _kgt.Characters, ref offset);
 
-            skiRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes(bytes, ref offset);
             return _kgt;
         }
 

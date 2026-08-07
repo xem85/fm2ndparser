@@ -179,6 +179,15 @@ namespace Fm2ndParser.Compilers
             writeUInt32(writer, (uint)_fmFile.Images.Count());
             foreach (var image in _fmFile.Images)
             {
+                var isPacked = image.PackedSize >= 0;
+                var enableRePacking = false;
+                if (enableRePacking && isPacked && (image.PackedData == null || image.PackedData.Length == 0))
+                {
+                    // update packedData
+                    image.PackedData = ImageCompression.Compress(image.Data);
+                    image.PackedSize = (uint)image.PackedData.LongLength;
+                }
+
                 writeBytes(writer, image.Pointer); // 4 bytes
                 writeUInt32(writer, image.Width);
                 writeUInt32(writer, image.Height);
@@ -188,19 +197,8 @@ namespace Fm2ndParser.Compilers
                 var paletteSize = (image.PaletteType == PaletteType.Private ? 0x400u : 0u);
                 var rawSize = checked((int)(image.Width * image.Height + paletteSize));
 
-                // todo: replace with image
-                if (image.PackedSize >= 0)
-                {
-                    if (image.PackedData == null || image.PackedData.Length == 0)
-                    {
-                        var packedData = ImageCompression.Compress(image.Data);
-                        writeBytes(writer, packedData);
-                    }
-                    else
-                    {
-                        writeBytes(writer, image.PackedData);
-                    }
-                }
+                if (isPacked)
+                    writeBytes(writer, image.PackedData);
                 else
                     writeBytes(writer, image.Data);
             }

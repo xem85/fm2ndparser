@@ -47,15 +47,12 @@ namespace Fm2ndParser
             var parsed = Parser.Default.ParseArguments<ParseOptions, CompileOptions>(args)
                 .MapResult(
                     (ParseOptions opts) => new ParseCommand(
-                        opts.InputFiles.Single(),
-                        opts.CleanUp,
-                        opts.NewFiles,
-                        opts.ExportResources,
+                        opts,
                         loggerFactory.CreateLogger<ParseCommand>()
                     ).Execute(),
 
                     (CompileOptions opts) => new CompileCommand(
-                        opts.InputFiles.Single(),
+                        opts,
                         loggerFactory.CreateLogger<CompileCommand>()
                     ).Execute(),
                     errs => HandleParseError(errs)
