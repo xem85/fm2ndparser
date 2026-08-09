@@ -18,27 +18,27 @@ namespace Fm2ndParser.Parsers
         {
         }
 
-        protected override DemoFile ParseInternal(Span<byte> bytes, ref int offset)
+        protected override DemoFile ParseInternal()
         {
-            var demo = base.ParseInternal(bytes, ref offset);
+            var demo = base.ParseInternal();
 
             setSettingsBlocksData();
 
-            skipEmptyBytes(bytes, 4, ref offset);
-            var bgm = getUInt16(bytes, ref offset);
+            skipEmptyBytes(4);
+            var bgm = getUInt16();
             demo.BGM = new SkillReference
             {
                 Number = bgm,
                 Name = demo.Sounds.Skip(bgm).First().Name,
             };
-            var skipWithInput = Convert.ToBoolean(getUInt16(bytes, ref offset));
-            skipEmptyBytes(bytes, 1, ref offset);
-            var time = getUInt32(bytes, ref offset);
+            var skipWithInput = Convert.ToBoolean(getUInt16());
+            skipEmptyBytes(1);
+            var time = getUInt32();
             demo.Time = time;
             demo.SkipWithInput = skipWithInput;
 
 
-            skipRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes();
             return demo;
         }
         protected override SettingsType getSettingsType(uint skillIdx)

@@ -23,22 +23,26 @@ namespace Fm2ndParser.Parsers
             return SettingsType.Stage;
         }
 
-        protected override StageFile ParseInternal(Span<byte> bytes, ref int offset)
+        protected override StageFile ParseInternal()
         {
-            var stage = base.ParseInternal(bytes, ref offset);
+            var stage = base.ParseInternal();
 
             setSettingsBlocksData();
 
-            skipEmptyBytes(bytes, 4, ref offset);
+            skipEmptyBytes(4);
 
-            var bgm = getUInt16(bytes, ref offset);
+            var bgm = getUInt16();
             stage.BGM = new SkillReference
             {
                 Number = bgm,
                 Name = stage.Sounds.Skip(bgm).First().Name,
             };
-         
-            skipRemaningEmptyBytes(bytes, ref offset);
+
+            skipEmptyBytes(1);
+
+            var count = getUInt16();
+
+            skipRemaningEmptyBytes();
             return stage;
         }
     }

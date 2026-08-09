@@ -1,8 +1,8 @@
 ﻿namespace Fm2ndParser.Kgt
 {
-    public enum HitMarkPosition
+    public enum HitMarkPosition : byte
     {
-        Left,
-        Right,
+        Left = 0,
+        Right = 1,
     }
 }

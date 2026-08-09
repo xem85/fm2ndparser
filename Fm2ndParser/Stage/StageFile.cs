@@ -5,5 +5,6 @@ namespace Fm2ndParser.Stage
 {
     public class StageFile : FMFile
     {
+        public SkillReference BGM { get; set; }
     }
 }

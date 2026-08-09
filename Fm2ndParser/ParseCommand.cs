@@ -49,7 +49,7 @@ namespace Fm2ndParser
         public bool ExportResources { get; set; }
     }
 
-    public class ParseCommand
+    public class ParseCommand : BaseCommand
     {
         private string inputFile;
         private bool cleanUp;
@@ -57,19 +57,19 @@ namespace Fm2ndParser
         private bool doExportResources;
         private ILogger<ParseCommand> logger;
 
-        public ParseCommand(ParseOptions options, ILogger<ParseCommand> logger)
+        public ParseCommand(ParseOptions opts, ILogger<ParseCommand> logger)
         {
-            this.inputFile = options.InputFiles.Single();
-            this.cleanUp = options.CleanUp;
-            this.output = options.Output ?? generateDefaultOutputFolder();
-            this.doExportResources = options.ExportResources;
+            this.inputFile = opts.InputFiles.Single();
+            this.cleanUp = opts.CleanUp;
+            this.output = opts.Output ?? generateDefaultOutputFolder();
+            this.doExportResources = opts.ExportResources;
             this.logger = logger;
         }
 
         public async Task Execute()
         {
-            if (Directory.Exists(output))
-                throw new Exception($"Output folder '{output}' already exists. Please specify a different output folder.");
+            this.validateInputs(output);
+            Directory.CreateDirectory(this.output);
 
             var extension = Path.GetExtension(inputFile).ToLowerInvariant();
 
@@ -91,11 +91,6 @@ namespace Fm2ndParser
                     Console.WriteLine($"Unsupported file type '{extension}'. Expected .kgt, .player, .stage or .demo.");
                     break;
             }
-        }
-
-        string generateDefaultOutputFolder()
-        {
-            return DateTime.Now.ToString("yyyyMMdd_HHmmss");
         }
 
         private void parseKgt(string kgtFile)
@@ -409,13 +404,14 @@ namespace Fm2ndParser
             }
 
             var palette = palettes[paletteIndex];
-            if (palette == null || palette.Data.Length < 0x400)
+            if (palette == null || palette.Colors.Length < 256)
             {
                 return null;
             }
+            var data = ToFM2kPalette(palette.Colors);
 
             var bmpPalette = new byte[0x400];
-            Buffer.BlockCopy(palette.Data, 0, bmpPalette, 0, 0x400);
+            Buffer.BlockCopy(data, 0, bmpPalette, 0, 0x400);
             return bmpPalette;
         }
         #endregion

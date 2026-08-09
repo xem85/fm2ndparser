@@ -6,7 +6,7 @@ namespace Fm2ndParser.Common
 {
     public class Skill
     {
-        public uint Type { get; set; }
+        public SkillType Type { get; set; }
         public int Index { get;  set; }
         public string Name { get; set; }
         [JsonIgnore]

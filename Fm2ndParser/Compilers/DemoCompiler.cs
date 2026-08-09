@@ -1,6 +1,7 @@
 ﻿using Fm2ndParser.Character;
 using Fm2ndParser.Common;
 using Fm2ndParser.Demo;
+using Fm2ndParser.Kgt;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,25 +11,22 @@ namespace Fm2ndParser.Compilers
 {
     public class DemoCompiler : BaseCompiler<DemoFile>
     {
-        public DemoCompiler(string filename, DemoFile demoFile)
-            : base(filename, demoFile)
+        public DemoCompiler(DemoFile demoFile, KGTFile kgtFile)
+            : base(demoFile, kgtFile) { }
+
+        override protected void CompileInternal()
         {
+            base.CompileInternal();
 
-        }
+            writeZeros(4);
 
-        override protected void CompileInternal(BinaryWriter writer)
-        {
-            base.CompileInternal(writer);
+            writeUInt16((ushort)_fmFile.BGM.Number);
 
-            writeZeros(writer, 4);
+            writeUInt16(Convert.ToUInt16(_fmFile.SkipWithInput));
+            writeZeros(1);
+            writeUInt32(_fmFile.Time);
 
-            writeUInt16(writer, (ushort)_fmFile.BGM.Number);
-
-            writeUInt16(writer, Convert.ToUInt16(_fmFile.SkipWithInput));
-            writeZeros(writer, 1);
-            writeUInt32(writer, _fmFile.Time);
-
-            writeZeros(writer, 1024 - 9);
+            writeZeros(1024);
         }
     }
 }

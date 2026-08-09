@@ -18,164 +18,164 @@ namespace Fm2ndParser.Parsers
         {
         }
 
-        protected override KGTFile ParseInternal(Span<byte> bytes, ref int offset)
+        protected override KGTFile ParseInternal()
         {
-            _kgt = base.ParseInternal(bytes, ref offset);
+            _kgt = base.ParseInternal();
 
-            skipEmptyBytes(bytes, 4, ref offset);
+            skipEmptyBytes(4);
 
-            _kgt.Characters = parseCharacters(bytes, ref offset);
+            _kgt.Characters = parseCharacters();
 
-            _kgt.HitJunctions = parseHitJunctions(bytes, ref offset);
+            _kgt.HitJunctions = parseHitJunctions();
 
             // unknown
-            var unknown = getInt8(bytes, ref offset);
+            var unknown = getInt8();
             Debug.Assert(unknown == 2);
 
-            skipEmptyBytes(bytes, 4, ref offset);
+            skipEmptyBytes(4);
 
             // offsets
-            var stiffTime = parseStiffTime(bytes, ref offset);
+            var stiffTime = parseStiffTime();
 
-            _kgt.Stages = parseStages(bytes, ref offset);
+            _kgt.Stages = parseStages();
 
-            _kgt.Demos = parseDemos(bytes, ref offset);
+            _kgt.Demos = parseDemos();
 
-            var screens = parseScreenSelect(bytes, ref offset);
+            var screens = parseScreenSelect();
 
             // these may be unused screen
-            skipEmptyBytes(bytes, 2, ref offset);
+            skipEmptyBytes(2);
 
             // base settings
-            _kgt.BaseSettings = parseBaseSettings(bytes, ref offset);
+            _kgt.BaseSettings = parseBaseSettings();
             _kgt.BaseSettings.StiffTime = stiffTime;
             _kgt.BaseSettings.Select = screens;
 
             // empty bytes
-            skipEmptyBytes(bytes, 3, ref offset);
+            skipEmptyBytes(3);
 
-            _kgt.CommonImages = parseCommonImages(bytes, ref offset);
+            _kgt.CommonImages = parseCommonImages();
 
-            _kgt.BuiltInSkills = parseBuiltInSkills(bytes, ref offset);
+            _kgt.BuiltInSkills = parseBuiltInSkills();
 
             setSettingsBlocksData();
 
-            skipEmptyBytes(bytes, 0x38, ref offset);
+            skipEmptyBytes(0x38);
 
-            _kgt.SelectionScreen = parseSelectionScreen(bytes, ref offset);
+            _kgt.SelectionScreen = parseSelectionScreen();
 
-            parseCharactersSettings(bytes, _kgt.Characters, ref offset);
+            parseCharactersSettings(_kgt.Characters);
 
-            skipRemaningEmptyBytes(bytes, ref offset);
+            skipRemaningEmptyBytes();
             return _kgt;
         }
 
-        private KGTBuiltInSkills parseBuiltInSkills(Span<byte> bytes, ref int offset)
+        private KGTBuiltInSkills parseBuiltInSkills()
         {
-            var shSkillIdxNone = getUInt16(bytes, ref offset);
-            var shSkillIdxHitLetterHit = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber0 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber1 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber2 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber3 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber4 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber5 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber6 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber7 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber8 = getUInt16(bytes, ref offset);
-            var shSkillIdxHitNumber9 = getUInt16(bytes, ref offset);
-            var shSkillIdxOffsetHitMark = getUInt16(bytes, ref offset);
-            var shSkillIdxRoundAniStarttime = getUInt16(bytes, ref offset);
-            var shSkillIdxRoundAniEndtime = getUInt16(bytes, ref offset);
-            var shSkillIdxRound1 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound2 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound3 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound4 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound5 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound6 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound7 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound8 = getUInt16(bytes, ref offset);
-            var shSkillIdxRound9 = getUInt16(bytes, ref offset);
-            var shSkillIdxRoundFinal = getUInt16(bytes, ref offset);
-            var shSkillIdxSpirits = getUInt16(bytes, ref offset);
-            var shSkillIdxKO = getUInt16(bytes, ref offset);
-            var shSkillIdxPerfect = getUInt16(bytes, ref offset);
-            var shSkillIdxYouWin = getUInt16(bytes, ref offset);
-            var shSkillIdxYouLose = getUInt16(bytes, ref offset);
-            var shSkillIdx1pWins = getUInt16(bytes, ref offset);
-            var shSkillIdx2pWins = getUInt16(bytes, ref offset);
-            var shSkillIdxDraw = getUInt16(bytes, ref offset);
-            var shSkillIdxDoubleKo = getUInt16(bytes, ref offset);
-            var shSkillIdxUnlimitedSign = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber0 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber1 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber2 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber3 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber4 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber5 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber6 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber7 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber8 = getUInt16(bytes, ref offset);
-            var shSkillIdxTimeNumber9 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber0 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber1 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber2 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber3 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber4 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber5 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber6 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber7 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber8 = getUInt16(bytes, ref offset);
-            var shSkillIdxSpecialStockNumber9 = getUInt16(bytes, ref offset);
-            var shSkillIdxVictoryMarkOn = getUInt16(bytes, ref offset);
-            var shSkillIdxVictoryMarkOff = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout1 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout2 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout3 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout4 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout5 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout6 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout7 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout8 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout9 = getUInt16(bytes, ref offset);
-            var shSkillIdxStageLayout10 = getUInt16(bytes, ref offset);
-            var shSkillIdx1pLifeGauge = getUInt16(bytes, ref offset);
-            var shSkillIdx2pLifeGauge = getUInt16(bytes, ref offset);
-            var shSkillIdx1pSpecialGauge = getUInt16(bytes, ref offset);
-            var shSkillIdx2pSpecialGauge = getUInt16(bytes, ref offset);
-            var shSkillIdxPositionTimer = getUInt16(bytes, ref offset);
-            var shSkillIdxPos1pFace = getUInt16(bytes, ref offset);
-            var shSkillIdxPos2pFace = getUInt16(bytes, ref offset);
-            var shSkillIdxPosSpecialStock1p = getUInt16(bytes, ref offset);
-            var shSkillIdxPosSpecialStock2p = getUInt16(bytes, ref offset);
-            var shSkillIdxPosVictoryMark1p = getUInt16(bytes, ref offset);
-            var shSkillIdxVPosVictoryMark2p = getUInt16(bytes, ref offset);
-            var shSkillIdxTitleCursor = getUInt16(bytes, ref offset);
-            var shSkillIdxPositionForStoryMode = getUInt16(bytes, ref offset);
-            var shSkillIdxPositionForVsMode = getUInt16(bytes, ref offset);
-            var shSkillIdxContinuteCursor = getUInt16(bytes, ref offset);
-            var shSkillIdxPositionCursorItDoes = getUInt16(bytes, ref offset);
-            var shSkillIdxPositionCursorItDoesNot = getUInt16(bytes, ref offset);
-            var shSkillIdx1pVsScreenCursor = getUInt16(bytes, ref offset);
-            var shSkillIdx2pVsScreenCursor = getUInt16(bytes, ref offset);
-            var shSkillIdx1pVsScreenCursorAfterInput = getUInt16(bytes, ref offset);
-            var shSkillIdx2pVsScreenCursorAfterInput = getUInt16(bytes, ref offset);
-            var shSkillIdxPosCursorForTeamBattle = getUInt16(bytes, ref offset);
-            var shSkillIdxPause = getUInt16(bytes, ref offset);
-            var skill_idx_spare6 = getUInt16(bytes, ref offset);
-            var skill_idx_spare7 = getUInt16(bytes, ref offset);
-            var skill_idx_spare8 = getUInt16(bytes, ref offset);
-            var skill_idx_spare9 = getUInt16(bytes, ref offset);
-            var skill_idx_spare10 = getUInt16(bytes, ref offset);
-            var skill_idx_spare11 = getUInt16(bytes, ref offset);
-            var skill_idx_spare12 = getUInt16(bytes, ref offset);
-            var skill_idx_spare13 = getUInt16(bytes, ref offset);
-            var skill_idx_spare14 = getUInt16(bytes, ref offset);
-            var skill_idx_spare15 = getUInt16(bytes, ref offset);
-            var skill_idx_spare16 = getUInt16(bytes, ref offset);
-            var skill_idx_spare17 = getUInt16(bytes, ref offset);
-            var skill_idx_spare18 = getUInt16(bytes, ref offset);
-            var skill_idx_spare19 = getUInt16(bytes, ref offset);
+            var shSkillIdxNone = getUInt16();
+            var shSkillIdxHitLetterHit = getUInt16();
+            var shSkillIdxHitNumber0 = getUInt16();
+            var shSkillIdxHitNumber1 = getUInt16();
+            var shSkillIdxHitNumber2 = getUInt16();
+            var shSkillIdxHitNumber3 = getUInt16();
+            var shSkillIdxHitNumber4 = getUInt16();
+            var shSkillIdxHitNumber5 = getUInt16();
+            var shSkillIdxHitNumber6 = getUInt16();
+            var shSkillIdxHitNumber7 = getUInt16();
+            var shSkillIdxHitNumber8 = getUInt16();
+            var shSkillIdxHitNumber9 = getUInt16();
+            var shSkillIdxOffsetHitMark = getUInt16();
+            var shSkillIdxRoundAniStarttime = getUInt16();
+            var shSkillIdxRoundAniEndtime = getUInt16();
+            var shSkillIdxRound1 = getUInt16();
+            var shSkillIdxRound2 = getUInt16();
+            var shSkillIdxRound3 = getUInt16();
+            var shSkillIdxRound4 = getUInt16();
+            var shSkillIdxRound5 = getUInt16();
+            var shSkillIdxRound6 = getUInt16();
+            var shSkillIdxRound7 = getUInt16();
+            var shSkillIdxRound8 = getUInt16();
+            var shSkillIdxRound9 = getUInt16();
+            var shSkillIdxRoundFinal = getUInt16();
+            var shSkillIdxSpirits = getUInt16();
+            var shSkillIdxKO = getUInt16();
+            var shSkillIdxPerfect = getUInt16();
+            var shSkillIdxYouWin = getUInt16();
+            var shSkillIdxYouLose = getUInt16();
+            var shSkillIdx1pWins = getUInt16();
+            var shSkillIdx2pWins = getUInt16();
+            var shSkillIdxDraw = getUInt16();
+            var shSkillIdxDoubleKo = getUInt16();
+            var shSkillIdxUnlimitedSign = getUInt16();
+            var shSkillIdxTimeNumber0 = getUInt16();
+            var shSkillIdxTimeNumber1 = getUInt16();
+            var shSkillIdxTimeNumber2 = getUInt16();
+            var shSkillIdxTimeNumber3 = getUInt16();
+            var shSkillIdxTimeNumber4 = getUInt16();
+            var shSkillIdxTimeNumber5 = getUInt16();
+            var shSkillIdxTimeNumber6 = getUInt16();
+            var shSkillIdxTimeNumber7 = getUInt16();
+            var shSkillIdxTimeNumber8 = getUInt16();
+            var shSkillIdxTimeNumber9 = getUInt16();
+            var shSkillIdxSpecialStockNumber0 = getUInt16();
+            var shSkillIdxSpecialStockNumber1 = getUInt16();
+            var shSkillIdxSpecialStockNumber2 = getUInt16();
+            var shSkillIdxSpecialStockNumber3 = getUInt16();
+            var shSkillIdxSpecialStockNumber4 = getUInt16();
+            var shSkillIdxSpecialStockNumber5 = getUInt16();
+            var shSkillIdxSpecialStockNumber6 = getUInt16();
+            var shSkillIdxSpecialStockNumber7 = getUInt16();
+            var shSkillIdxSpecialStockNumber8 = getUInt16();
+            var shSkillIdxSpecialStockNumber9 = getUInt16();
+            var shSkillIdxVictoryMarkOn = getUInt16();
+            var shSkillIdxVictoryMarkOff = getUInt16();
+            var shSkillIdxStageLayout1 = getUInt16();
+            var shSkillIdxStageLayout2 = getUInt16();
+            var shSkillIdxStageLayout3 = getUInt16();
+            var shSkillIdxStageLayout4 = getUInt16();
+            var shSkillIdxStageLayout5 = getUInt16();
+            var shSkillIdxStageLayout6 = getUInt16();
+            var shSkillIdxStageLayout7 = getUInt16();
+            var shSkillIdxStageLayout8 = getUInt16();
+            var shSkillIdxStageLayout9 = getUInt16();
+            var shSkillIdxStageLayout10 = getUInt16();
+            var shSkillIdx1pLifeGauge = getUInt16();
+            var shSkillIdx2pLifeGauge = getUInt16();
+            var shSkillIdx1pSpecialGauge = getUInt16();
+            var shSkillIdx2pSpecialGauge = getUInt16();
+            var shSkillIdxPositionTimer = getUInt16();
+            var shSkillIdxPos1pFace = getUInt16();
+            var shSkillIdxPos2pFace = getUInt16();
+            var shSkillIdxPosSpecialStock1p = getUInt16();
+            var shSkillIdxPosSpecialStock2p = getUInt16();
+            var shSkillIdxPosVictoryMark1p = getUInt16();
+            var shSkillIdxVPosVictoryMark2p = getUInt16();
+            var shSkillIdxTitleCursor = getUInt16();
+            var shSkillIdxPositionForStoryMode = getUInt16();
+            var shSkillIdxPositionForVsMode = getUInt16();
+            var shSkillIdxContinuteCursor = getUInt16();
+            var shSkillIdxPositionCursorItDoes = getUInt16();
+            var shSkillIdxPositionCursorItDoesNot = getUInt16();
+            var shSkillIdx1pVsScreenCursor = getUInt16();
+            var shSkillIdx2pVsScreenCursor = getUInt16();
+            var shSkillIdx1pVsScreenCursorAfterInput = getUInt16();
+            var shSkillIdx2pVsScreenCursorAfterInput = getUInt16();
+            var shSkillIdxPosCursorForTeamBattle = getUInt16();
+            var shSkillIdxPause = getUInt16();
+            var skill_idx_spare6 = getUInt16();
+            var skill_idx_spare7 = getUInt16();
+            var skill_idx_spare8 = getUInt16();
+            var skill_idx_spare9 = getUInt16();
+            var skill_idx_spare10 = getUInt16();
+            var skill_idx_spare11 = getUInt16();
+            var skill_idx_spare12 = getUInt16();
+            var skill_idx_spare13 = getUInt16();
+            var skill_idx_spare14 = getUInt16();
+            var skill_idx_spare15 = getUInt16();
+            var skill_idx_spare16 = getUInt16();
+            var skill_idx_spare17 = getUInt16();
+            var skill_idx_spare18 = getUInt16();
+            var skill_idx_spare19 = getUInt16();
 
             var result = new KGTBuiltInSkills
             {
@@ -287,11 +287,11 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private void parseCharactersSettings(Span<byte> bytes, ICollection<Kgt.Character> characters, ref int offset)
+        private void parseCharactersSettings(ICollection<Kgt.Character> characters)
         {
             for (int i = 0; i < 50; i++)
             {
-                var flags = getByte(bytes, ref offset);
+                var flags = getByte();
 
                 var character = characters.ElementAtOrDefault(i);
                 if (character == null)
@@ -304,12 +304,12 @@ namespace Fm2ndParser.Parsers
             }
         }
 
-        private List<string> parseCommonImages(Span<byte> bytes, ref int offset)
+        private List<string> parseCommonImages()
         {
             var result = new List<string>();
             for (int i = 0; i < 200; i++)
             {
-                var name = getString(bytes, 0x20, ref offset);
+                var name = getString(0x20);
                 if (!string.IsNullOrEmpty(name))
                     result.Add(name);
             }
@@ -317,31 +317,31 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private SelectionScreenSettings parseSelectionScreen(Span<byte> bytes, ref int offset)
+        private SelectionScreenSettings parseSelectionScreen()
         {
             var result = new SelectionScreenSettings
             {
-                CharStartPosX = getUInt16(bytes, ref offset),
-                CharStartPosY = getUInt16(bytes, ref offset),
-                DistanceBetweenCharsX = getUInt16(bytes, ref offset),
-                DistanceBetweenCharsY = getUInt16(bytes, ref offset),
-                Columns = getUInt16(bytes, ref offset),
-                Rows = getUInt16(bytes, ref offset),
-                P1CursorPosX = getUInt16(bytes, ref offset),
-                P1CursorPosY = getUInt16(bytes, ref offset),
-                P1TeamBattleDiscanceX = getInt16(bytes, ref offset),
-                P1TeamBattleDiscanceY = getInt16(bytes, ref offset),
-                P2CursorPosX = getUInt16(bytes, ref offset),
-                P2CursorPosY = getUInt16(bytes, ref offset),
-                P2TeamBattleDiscanceX = getInt16(bytes, ref offset),
-                P2TeamBattleDiscanceY = getInt16(bytes, ref offset),
+                CharStartPosX = getUInt16(),
+                CharStartPosY = getUInt16(),
+                DistanceBetweenCharsX = getUInt16(),
+                DistanceBetweenCharsY = getUInt16(),
+                Columns = getUInt16(),
+                Rows = getUInt16(),
+                P1CursorPosX = getUInt16(),
+                P1CursorPosY = getUInt16(),
+                P1TeamBattleDiscanceX = getInt16(),
+                P1TeamBattleDiscanceY = getInt16(),
+                P2CursorPosX = getUInt16(),
+                P2CursorPosY = getUInt16(),
+                P2TeamBattleDiscanceX = getInt16(),
+                P2TeamBattleDiscanceY = getInt16(),
             };
             return result;
         }
 
-        private BaseSettings parseBaseSettings(Span<byte> bytes, ref int offset)
+        private BaseSettings parseBaseSettings()
         {
-            var flags = getByte(bytes, ref offset);
+            var flags = getByte();
             var baseSettings = new BaseSettings
             {
                 Offset = isFlagOn(flags, 1),
@@ -355,25 +355,25 @@ namespace Fm2ndParser.Parsers
             return baseSettings;
         }
 
-        private ScreenSelect parseScreenSelect(Span<byte> bytes, ref int offset)
+        private ScreenSelect parseScreenSelect()
         {
             return new ScreenSelect
             {
-                TitleScreen = getByte(bytes, ref offset),
-                P1vsCPU = getByte(bytes, ref offset),
-                P1vsP2 = getByte(bytes, ref offset),
-                TeamVSTeam = getByte(bytes, ref offset),
-                GameOver = getByte(bytes, ref offset),
-                OpeningDemo = getByte(bytes, ref offset)
+                TitleScreen = getByte(),
+                P1vsCPU = getByte(),
+                P1vsP2 = getByte(),
+                TeamVSTeam = getByte(),
+                GameOver = getByte(),
+                OpeningDemo = getByte()
             };
         }
 
-        private List<string> parseDemos(Span<byte> bytes, ref int offset)
+        private List<string> parseDemos()
         {
             var result = new List<string>();
             for (int i = 0; i < 100; i++)
             {
-                var name = getString(bytes, 0x100, ref offset);
+                var name = getString(0x100);
                 if (!string.IsNullOrEmpty(name))
                     result.Add(name);
             }
@@ -381,12 +381,12 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private List<string> parseStages(Span<byte> bytes, ref int offset)
+        private List<string> parseStages()
         {
             var result = new List<string>();
             for (int i = 0; i < 50; i++)
             {
-                var name = getString(bytes, 0x100, ref offset);
+                var name = getString(0x100);
                 if (!string.IsNullOrEmpty(name))
                     result.Add(name);
             }
@@ -394,23 +394,23 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private StiffTime parseStiffTime(Span<byte> bytes, ref int offset)
+        private StiffTime parseStiffTime()
         {
             return new StiffTime
             {
-                Hit = getByte(bytes, ref offset),
-                Guard = getByte(bytes, ref offset),
-                Offset = getByte(bytes, ref offset),
+                Hit = getByte(),
+                Guard = getByte(),
+                Offset = getByte(),
             };
         }
 
-        private List<HitJunction> parseHitJunctions(Span<byte> bytes, ref int offset)
+        private List<HitJunction> parseHitJunctions()
         {
             var result = new List<HitJunction>();
             for (int i = 0; i < 200; i++)
             {
-                var name = getString(bytes, 0x20, ref offset);
-                var active = getUInt32(bytes, ref offset);
+                var name = getString(0x20);
+                var active = getUInt32();
                 if (!string.IsNullOrEmpty(name))
                     result.Add(new HitJunction { Name = name, Active = active == 1 });
             }
@@ -418,12 +418,12 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-        private List<Kgt.Character> parseCharacters(Span<byte> bytes, ref int offset)
+        private List<Kgt.Character> parseCharacters()
         {
             var result = new List<Kgt.Character>();
             for (int i = 0; i < 50; i++)
             {
-                var name = getString(bytes, 0x100, ref offset);
+                var name = getString(0x100);
                 if (!string.IsNullOrEmpty(name))
                     result.Add(new Kgt.Character { Name = name });
             }

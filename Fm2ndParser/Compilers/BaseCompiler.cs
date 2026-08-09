@@ -1,7 +1,8 @@
 ﻿using Fm2ndParser.Blocks;
 using Fm2ndParser.Character;
 using Fm2ndParser.Common;
-using Fm2ndParser.Parsers;
+using Fm2ndParser.Kgt;
+using Fm2ndParser.Utility;
 using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections.Generic;
@@ -16,167 +17,182 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Fm2ndParser.Compilers
 {
-    public abstract class BaseCompiler<T> where T : FMFile, new()
+    public abstract class BaseCompiler<T>
+        where T : FMFile, new()
     {
-        string _filename;
         protected T _fmFile;
+        protected BinaryWriter _writer;
+        protected KGTFile _kgtFile;
 
-        public BaseCompiler(string filename, T fmFile)
+        public BaseCompiler(T fmFile, KGTFile kgtFile)
         {
-            _filename = filename;
             _fmFile = fmFile;
-        }
-        public void Compile()
-        {
-            using var stream = File.OpenWrite(_filename);
-            using var writer = new BinaryWriter(stream);
-
-            CompileInternal(writer);
+            _kgtFile = kgtFile;
         }
 
-        protected virtual void CompileInternal(BinaryWriter writer)
+        public void Compile(string outputFilename)
         {
-            writeHeader(writer);
+            using var stream = File.OpenWrite(outputFilename);
+            Compile(stream);
+        }
 
-            writeName(writer);
-            writeSkills(writer);
-            writeBlocks(writer);
-            writeImages(writer);
-            writeGlobalPalettes(writer);
-            writeSounds(writer);
+        public void Compile(Stream stream)
+        {
+            using var writer = _writer = new BinaryWriter(stream);
+            CompileInternal();
+        }
+
+        protected virtual void CompileInternal()
+        {
+            writeHeader();
+
+            writeName();
+            writeSkills();
+            writeBlocks();
+            writeImages();
+            writeGlobalPalettes();
+            writeSounds();
         }
 
         // 16 byte header
-        private void writeHeader(BinaryWriter writer)
+        private void writeHeader()
         {
-            writeString(writer, "2DKGT2K");
-            writeZeros(writer, 5);
-            writeBytes(writer, [0x01]);
-            writeZeros(writer, 3);
+            writeString("2DKGT2K");
+            writeZeros(5);
+            writeBytes([_kgtFile.Loaded ? (byte)1 : (byte)0]);
+            writeZeros(3);
+        }
+
+        private void writeBytes(object value)
+        {
+            throw new NotImplementedException();
         }
 
         // 256 byte name
-        private void writeName(BinaryWriter writer)
+        private void writeName()
         {
-            writeString(writer, _fmFile.Name, 256);
+            writeString(_fmFile.Name, 256);
         }
 
-        private void writeSkills(BinaryWriter writer)
+        private void writeSkills()
         {
-            writeUInt32(writer, (uint)_fmFile.Skills.Count());
+            writeUInt32((uint)_fmFile.Skills.Count());
 
             ushort position = 0;
             foreach (var skill in _fmFile.Skills)
             {
-                writeString(writer, skill.Name, 32);
-                writeUInt16(writer, position);
-                writeZeros(writer, 1);
-                writeUInt32(writer, skill.Type);
+                writeString(skill.Name, 32);
+                writeUInt16(position);
+                writeZeros(1);
+                writeUInt32((uint)skill.Type);
                 position += (ushort)skill.Blocks.Count();
             }
         }
-        private void writeBlocks(BinaryWriter writer)
+        private void writeBlocks()
         {
             var blocksCount = (uint)_fmFile.Skills.SelectMany(x => x.Blocks).Count();
-            writeUInt32(writer, blocksCount);
+            writeUInt32(blocksCount);
             foreach (var skill in _fmFile.Skills)
             {
                 foreach (var block in skill.Blocks)
                 {
-                    var startPosition = writer.BaseStream.Position;
+                    var startPosition = _writer.BaseStream.Position;
 
-                    writeBytes(writer, [(byte)toBlockType(block.Type)]);
+                    writeBytes([(byte)toBlockType(block.Type)]);
                     switch (toBlockType(block.Type))
                     {
                         case BlockType.Settings:
-                            writeSettiningsBlock(writer, (SettingsBlock)block);
+                            writeSettiningsBlock((SettingsBlock)block);
                             break;
                         case BlockType.M:
-                            writeMBlock(writer, (MBlock)block);
+                            writeMBlock((MBlock)block);
                             break;
                         case BlockType.DS:
-                            writeDSBlock(writer, (DSBlock)block);
+                            writeDSBlock((DSBlock)block);
                             break;
                         case BlockType.S:
-                            writeSBlock(writer, (SBlock)block);
+                            writeSBlock((SBlock)block);
                             break;
                         case BlockType.O:
-                            writeOBlock(writer, (OBlock)block);
+                            writeOBlock((OBlock)block);
                             break;
                         case BlockType.E:
-                            writeEBlock(writer, (EBlock)block);
+                            writeEBlock((EBlock)block);
                             break;
                         case BlockType.RC:
-                            writeRCBlock(writer, (RCBlock)block);
+                            writeRCBlock((RCBlock)block);
                             break;
                         case BlockType.SF:
-                            writeSFBlock(writer, (SFBlock)block);
+                            writeSFBlock((SFBlock)block);
                             break;
                         case BlockType.SG:
-                            writeSGBlock(writer, (SGBlock)block);
+                            writeSGBlock((SGBlock)block);
                             break;
                         case BlockType.SC:
-                            writeSCBlock(writer, (SCBlock)block);
+                            writeSCBlock((SCBlock)block);
                             break;
                         case BlockType.I:
-                            writeIBlock(writer, (IBlock)block);
+                            writeIBlock((IBlock)block);
                             break;
                         case BlockType.EB:
-                            writeEBBlock(writer, (EBBlock)block);
+                            writeEBBlock((EBBlock)block);
                             break;
                         case BlockType.GS:
-                            writeGSBlock(writer, (GSBlock)block);
+                            writeGSBlock((GSBlock)block);
                             break;
                         case BlockType.GL:
-                            writeGLBlock(writer, (GLBlock)block);
+                            writeGLBlock((GLBlock)block);
                             break;
                         case BlockType.RP:
-                            writeRPBlock(writer, (RPBlock)block);
+                            writeRPBlock((RPBlock)block);
                             break;
                         case BlockType.GC:
-                            writeGCBlock(writer, (GCBlock)block);
+                            writeGCBlock((GCBlock)block);
+                            break;
+                        case BlockType.DB:
+                            writeDBBlock((DBBlock)block);
                             break;
                         case BlockType.R:
-                            writeRBlock(writer, (RBlock)block);
+                            writeRBlock((RBlock)block);
                             break;
                         case BlockType.FA:
-                            writeFABlock(writer, (FABlock)block);
+                            writeFABlock((FABlock)block);
                             break;
                         case BlockType.FD:
-                            writeFDBlock(writer, (FDBlock)block);
+                            writeFDBlock((FDBlock)block);
                             break;
                         case BlockType.PS:
-                            writePSBlock(writer, (PSBlock)block);
+                            writePSBlock((PSBlock)block);
                             break;
                         case BlockType.C:
-                            writeCBlock(writer, (CBlock)block);
+                            writeCBlock((CBlock)block);
                             break;
                         case BlockType.V:
-                            writeVBlock(writer, (VBlock)block);
+                            writeVBlock((VBlock)block);
                             break;
                         case BlockType.Rnd:
-                            writeRndBlock(writer, (RndBlock)block);
+                            writeRndBlock((RndBlock)block);
                             break;
                         case BlockType.COLOR:
-                            writeColorBlock(writer, (ColorBlock)block);
+                            writeColorBlock((ColorBlock)block);
                             break;
                         case BlockType.COM:
-                            writeComBlock(writer, (ComBlock)block);
+                            writeComBlock((ComBlock)block);
                             break;
                         case BlockType.AI:
-                            writeAIBlock(writer, (AIBlock)block);
+                            writeAIBlock((AIBlock)block);
                             break;
                     }
 
-                    var byteCount = writer.BaseStream.Position - startPosition;
-                    Debug.Assert(byteCount == 16);
+                    var wroteBytes = _writer.BaseStream.Position - startPosition;
+                    writeZeros(16 - (int)wroteBytes);
                 }
             }
         }
 
-        private void writeImages(BinaryWriter writer)
+        private void writeImages()
         {
-            writeUInt32(writer, (uint)_fmFile.Images.Count());
+            writeUInt32((uint)_fmFile.Images.Count());
             foreach (var image in _fmFile.Images)
             {
                 var isPacked = image.PackedSize >= 0;
@@ -188,86 +204,80 @@ namespace Fm2ndParser.Compilers
                     image.PackedSize = (uint)image.PackedData.LongLength;
                 }
 
-                writeBytes(writer, image.Pointer); // 4 bytes
-                writeUInt32(writer, image.Width);
-                writeUInt32(writer, image.Height);
-                writeUInt32(writer, (uint)image.PaletteType);
-                writeUInt32(writer, image.PackedSize);
+                writeBytes(image.Pointer); // 4 bytes
+                writeUInt32(image.Width);
+                writeUInt32(image.Height);
+                writeUInt32((uint)image.PaletteType);
+                writeUInt32(image.PackedSize);
 
                 var paletteSize = (image.PaletteType == PaletteType.Private ? 0x400u : 0u);
                 var rawSize = checked((int)(image.Width * image.Height + paletteSize));
 
                 if (isPacked)
-                    writeBytes(writer, image.PackedData);
+                    writeBytes(image.PackedData);
                 else
-                    writeBytes(writer, image.Data);
+                    writeBytes(image.Data);
             }
         }
 
-        private void writeGlobalPalettes(BinaryWriter writer)
+        private void writeGlobalPalettes()
         {
             foreach (var palette in _fmFile.GlobalPalettes)
             {
                 var data = ParseCommand.ToFM2kPalette(palette.Colors);
-                writeBytes(writer, data);
+                writeBytes(data);
             }
         }
 
-        private void writeSounds(BinaryWriter writer)
+        private void writeSounds()
         {
-            writeUInt32(writer, (uint)_fmFile.Sounds.Count());
+            writeUInt32((uint)_fmFile.Sounds.Count());
             foreach (var sound in _fmFile.Sounds)
             {
-                writeBytes(writer, sound.Pointer); // 4 bytes
-                writeString(writer, sound.Name, 0x20);
-                writeUInt32(writer, sound.Size);
+                writeBytes(sound.Pointer); // 4 bytes
+                writeString(sound.Name, 0x20);
+                writeUInt32(sound.Size);
 
                 byte flags = 0;
 
                 if (sound.EndlessLoop) flags |= 1 << 4;
                 flags |= (byte)((byte)sound.Type & 0b00000011);
-                writeBytes(writer, [flags]);
+                writeBytes([flags]);
 
-                writeBytes(writer, [sound.CDDATrack]);
+                writeBytes([sound.CDDATrack]);
 
-                writeBytes(writer, sound.Data);
+                writeBytes(sound.Data);
             }
         }
 
         #region Write blocks
-        protected void writeSettiningsBlock(BinaryWriter writer, SettingsBlock block)
+        protected void writeSettiningsBlock(SettingsBlock block)
         {
             switch (block.SettingsType)
             {
                 case SettingsType.None:
-                    writeZeros(writer, 15);
                     break;
                 case SettingsType.HitMark:
-                    writeBytes(writer, [(byte)block.Position]);
-                    writeBytes(writer, [block.NumberWidth]);
-                    writeZeros(writer, 13);
+                    writeBytes([(byte)block.Position]);
+                    writeBytes([block.NumberWidth]);
                     break;
                 case SettingsType.Time:
-                    writeUInt32(writer, block.Time);
-                    writeZeros(writer, 11);
+                    writeUInt32(block.Time);
                     break;
                 case SettingsType.Position:
-                    writeInt16(writer, block.X);
-                    writeInt16(writer, block.Y);
-                    writeBytes(writer, [(byte)block.Width]);
-                    writeZeros(writer, 10);
+                    writeInt16(block.X);
+                    writeInt16(block.Y);
+                    writeBytes([(byte)block.Width]);
                     break;
                 case SettingsType.MarkPosition:
-                    writeInt16(writer, block.X);
-                    writeInt16(writer, block.Y);
-                    writeInt8(writer, (sbyte)block.Width);
-                    writeInt8(writer, (sbyte)block.Height);
-                    writeZeros(writer, 9);
+                    writeInt16(block.X);
+                    writeInt16(block.Y);
+                    writeInt8((sbyte)block.Width);
+                    writeInt8((sbyte)block.Height);
                     break;
                 case SettingsType.Character:
-                    writeZeros(writer, 1);
-                    writeBytes(writer, [(byte)block.Level]);
-                    writeZeros(writer, 13);
+                    writeZeros(1);
+                    writeBytes([(byte)block.Level]);
                     break;
                 case SettingsType.Stage:
                     byte flags = 0;
@@ -275,24 +285,23 @@ namespace Fm2ndParser.Compilers
                     if (block.ConnectUpDw) flags |= 1 << 2;
                     if (block.WidthEnabled) flags |= 1 << 3;
                     if (block.HeightEnabled) flags |= 1 << 4;
-                    writeBytes(writer, [flags]);
+                    writeBytes([flags]);
 
-                    writeInt16(writer, block.Width);
-                    writeInt16(writer, block.Height);
+                    writeInt16(block.Width);
+                    writeInt16(block.Height);
 
-                    writeZeros(writer, 10);
                     break;
                 default:
                     throw new Exception("Unknown SettingsType: " + block.SettingsType);
             }
         }
 
-        private void writeMBlock(BinaryWriter writer, MBlock block)
+        private void writeMBlock(MBlock block)
         {
-            writeInt16(writer, block.GravityX);
-            writeInt16(writer, block.MoveX);
-            writeInt16(writer, block.MoveY);
-            writeInt16(writer, block.GravityY);
+            writeInt16(block.GravityX);
+            writeInt16(block.MoveX);
+            writeInt16(block.MoveY);
+            writeInt16(block.GravityY);
 
             byte flags = 0;
 
@@ -302,25 +311,21 @@ namespace Fm2ndParser.Compilers
             if (block.StopGravityX) flags |= 1 << 3;
             if (block.StopGravityY) flags |= 1 << 4;
 
-            writeBytes(writer, [flags]);
-
-            writeZeros(writer, 6);
+            writeBytes([flags]);
         }
 
-        private void writeDSBlock(BinaryWriter writer, DSBlock block)
+        private void writeDSBlock(DSBlock block)
         {
-            writeBytes(writer, [(byte)block.When]);
-            writeSkillBlockReference(writer, block.Skill);
-            writeZeros(writer, 11);
+            writeBytes([(byte)block.When]);
+            writeSkillBlockReference(block.Skill);
         }
-        private void writeSBlock(BinaryWriter writer, SBlock block)
+        private void writeSBlock(SBlock block)
         {
-            writeZeros(writer, 1);  // todo write unknown byte
-            writeUInt16(writer, block.Sound.Number);    // todo get number from sound reference
-            writeZeros(writer, 12);
+            writeZeros(1);  // unknown byte
+            writeUInt16(block.Sound.Number);    // todo get number from sound reference
         }
 
-        private void writeOBlock(BinaryWriter writer, OBlock block)
+        private void writeOBlock(OBlock block)
         {
             byte flags = 0;
             if (block.Out) flags |= 1 << 0;
@@ -330,80 +335,71 @@ namespace Fm2ndParser.Compilers
             if (block.Parent) flags |= 1 << 5;
             if (block.PicXY) flags |= 1 << 6;
 
-            writeBytes(writer, new byte[] { flags });
+            writeBytes(new byte[] { flags });
 
-            writeSkillBlockReference(writer, block.Skill);
-            writeSkillBlockReference(writer, block.OutSkill);
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
-            writeBytes(writer, [block.Number]);
-            writeBytes(writer, [block.Depth]);
-            writeZeros(writer, 2);
+            writeSkillBlockReference(block.Skill);
+            writeSkillBlockReference(block.OutSkill);
+            writeInt16(block.X);
+            writeInt16(block.Y);
+            writeBytes([block.Number]);
+            writeBytes([block.Depth]);
         }
 
-        private void writeEBlock(BinaryWriter writer, EBlock block)
+        private void writeEBlock(EBlock block)
         {
-            writeZeros(writer, 15);
         }
 
-        private void writeRCBlock(BinaryWriter writer, RCBlock block)
+        private void writeRCBlock(RCBlock block)
         {
             byte flags = 0;
             if (block.In) flags |= 1 << 0;
             if (block.TurnX) flags |= 1 << 2;
             if (block.TurnY) flags |= 1 << 3;
             if (block.Same) flags |= 1 << 4;
-            writeBytes(writer, new byte[] { flags });
+            writeBytes(new byte[] { flags });
 
-            writeUInt16(writer, block.CommonImage.Number);
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
-
-            writeZeros(writer, 8);
+            writeUInt16(block.CommonImage.Number);
+            writeInt16(block.X);
+            writeInt16(block.Y);
         }
 
-        private void writeSFBlock(BinaryWriter writer, SFBlock block)
+        private void writeSFBlock(SFBlock block)
         {
-            writeBytes(writer, [block.Loop]);
-            writeSkillBlockReference(writer, block.Skill);
-            writeZeros(writer, 11);
+            writeBytes([block.Loop]);
+            writeSkillBlockReference(block.Skill);
         }
 
-        private void writeSGBlock(BinaryWriter writer, SGBlock block)
+        private void writeSGBlock(SGBlock block)
         {
-            writeSkillBlockReference(writer, block.Skill);
-            writeZeros(writer, 12);
+            writeSkillBlockReference(block.Skill);
         }
 
-        private void writeSCBlock(BinaryWriter writer, SCBlock block)
+        private void writeSCBlock(SCBlock block)
         {
-            writeSkillBlockReference(writer, block.Skill);
-            writeZeros(writer, 12);
+            writeSkillBlockReference(block.Skill);
         }
 
-        private void writeIBlock(BinaryWriter writer, IBlock block)
+        private void writeIBlock(IBlock block)
         {
-            writeUInt16(writer, block.Wait);
+            writeUInt16(block.Wait);
             byte flags = 0;
 
             if (block.TurnX) { flags |= 1 << 6; }
             if (block.TurnY) { flags |= 1 << 7; }
 
-            writeBytes(writer, setSplittedData(flags, block.I));
+            writeBytes(setSplittedData(flags, block.I));
 
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
+            writeInt16(block.X);
+            writeInt16(block.Y);
 
             byte ignoreDirection = block.IgnoreDirection ? (byte)0x01 : (byte)0x00;
 
-            writeBytes(writer, [ignoreDirection]);
-
-            writeZeros(writer, 6);
+            writeBytes([ignoreDirection]);
         }
 
         protected byte[] setSplittedData(byte flags, ushort value)
         {
-            var iMask = (byte)BaseParser<FMFile>.CreateBitMask(0, 5);
+            var iMask = (byte)ByteUtility.CreateBitMask(0, 5);
 
             // flags può occupare solo i 3 bit alti del secondo byte
             if ((flags & iMask) != 0)
@@ -426,11 +422,11 @@ namespace Fm2ndParser.Compilers
             return word;
         }
 
-        private void writeEBBlock(BinaryWriter writer, EBBlock block)
+        private void writeEBBlock(EBBlock block)
         {
-            writeBytes(writer, [(byte)block.FadingType]);
-            writeRgba(writer, block.Rgba);
-            writeUInt16(writer, block.Duration);
+            writeBytes([(byte)block.FadingType]);
+            writeRgba(block.Rgba);
+            writeUInt16(block.Duration);
 
             byte flags = 0;
 
@@ -438,84 +434,81 @@ namespace Fm2ndParser.Compilers
             if (block.Enemy) flags |= 1 << 1;
             if (block.BG) flags |= 1 << 2;
             if (block.System) flags |= 1 << 3;
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
 
-            writeEBShakeBG(writer, block.ShakeBgX);
-            writeEBShakeBG(writer, block.ShakeBgY);
-            writeZeros(writer, 1);
+            writeEBShakeBG(block.ShakeBgX);
+            writeEBShakeBG(block.ShakeBgY);
         }
 
 
-        private void writeGSBlock(BinaryWriter writer, GSBlock block)
+        private void writeGSBlock(GSBlock block)
         {
-            writeZeros(writer, 1);
+            writeZeros(1);
 
-            writeSkillBlockReference(writer, block.Skill);
-            writeBytes(writer, [block.IsMore ? (byte)1 : (byte)0]);
-            writeBytes(writer, [block.Level]);
-            writeInt16(writer, block.Add);
-
-            writeZeros(writer, 7);
+            writeSkillBlockReference(block.Skill);
+            writeBytes([block.IsMore ? (byte)1 : (byte)0]);
+            writeBytes([block.Level]);
+            writeInt16(block.Add);
         }
 
-        private void writeGLBlock(BinaryWriter writer, GLBlock block)
+        private void writeGLBlock(GLBlock block)
         {
-            writeZeros(writer, 1);
+            writeZeros(1);
 
-            writeSkillBlockReference(writer, block.Skill);
-            writeBytes(writer, [block.IsMore ? (byte)1 : (byte)0]);
-            writeInt16(writer, block.Add);
-
-            writeZeros(writer, 8);
+            writeSkillBlockReference(block.Skill);
+            writeBytes([block.IsMore ? (byte)1 : (byte)0]);
+            writeInt16(block.Add);
         }
 
-        private void writeRPBlock(BinaryWriter writer, RPBlock block)
+        private void writeRPBlock(RPBlock block)
         {
             byte flags = 0;
 
             if (block.In) flags |= 1 << 0;
             if (block.TurnX) flags |= 1 << 2;
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
 
-            writeHitJunctionBlock(writer, block.HitJunction);
+            writeHitJunctionBlock(block.HitJunction);
 
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
-            writeZeros(writer, 8);
+            writeInt16(block.X);
+            writeInt16(block.Y);
         }
 
-        private void writeGCBlock(BinaryWriter writer, GCBlock block)
+        private void writeGCBlock(GCBlock block)
         {
-            writeZeros(writer, 1);
+            writeZeros(1);
 
-            writeInt16(writer, block.PlayerLifeGauge);
-            writeInt16(writer, block.PlayerSpecialGauge);
-            writeInt16(writer, block.EnemyLifeGauge);
-            writeInt16(writer, block.EnemySpecialGauge);
-
-            writeZeros(writer, 6);
+            writeInt16(block.PlayerLifeGauge);
+            writeInt16(block.PlayerSpecialGauge);
+            writeInt16(block.EnemyLifeGauge);
+            writeInt16(block.EnemySpecialGauge);
+        }
+        private void writeDBBlock(DBBlock block)
+        {
+            writeBytes([block.Fail ? (byte)1 : (byte)0]);
+            writeSkillBlockReference(block.Skill);
+            writeZeros(2);
+            writeBytes([(byte)block.Condition]);
         }
 
-        private void writeRBlock(BinaryWriter writer, RBlock block)
+        private void writeRBlock(RBlock block)
         {
-            writeHitJunctionBlock(writer, block.HitsStand);
-            writeHitJunctionBlock(writer, block.HitsCrouched);
-            writeHitJunctionBlock(writer, block.HitsAir);
-            writeHitJunctionBlock(writer, block.GuardStand);
-            writeHitJunctionBlock(writer, block.GuardCrouched);
-            writeHitJunctionBlock(writer, block.GuardAir);
-
-            writeZeros(writer, 3);
+            writeHitJunctionBlock(block.HitsStand);
+            writeHitJunctionBlock(block.HitsCrouched);
+            writeHitJunctionBlock(block.HitsAir);
+            writeHitJunctionBlock(block.GuardStand);
+            writeHitJunctionBlock(block.GuardCrouched);
+            writeHitJunctionBlock(block.GuardAir);
         }
 
-        private void writeFABlock(BinaryWriter writer, FABlock block)
+        private void writeFABlock(FABlock block)
         {
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
+            writeInt16(block.X);
+            writeInt16(block.Y);
 
-            writeInt16(writer, block.Width);
-            writeInt16(writer, block.Height);
-            writeBytes(writer, [block.Number]);
+            writeInt16(block.Width);
+            writeInt16(block.Height);
+            writeBytes([block.Number]);
 
             byte flags = 0;
 
@@ -528,59 +521,52 @@ namespace Fm2ndParser.Compilers
             if (block.GuardFail) flags |= 1 << 6;
             if (block.DuringReceipt) flags |= 1 << 7;
 
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
 
-            writeZeros(writer, 1);
+            writeZeros(1);
 
-            writeBytes(writer, [block.Power]);
-            writeZeros(writer, 3);
+            writeBytes([block.Power]);
         }
 
-        private void writeFDBlock(BinaryWriter writer, FDBlock block)
+        private void writeFDBlock(FDBlock block)
         {
-            writeInt16(writer, block.X);
-            writeInt16(writer, block.Y);
-            writeInt16(writer, block.Width);
-            writeInt16(writer, block.Height);
-            writeBytes(writer, [block.Number]);
+            writeInt16(block.X);
+            writeInt16(block.Y);
+            writeInt16(block.Width);
+            writeInt16(block.Height);
+            writeBytes([block.Number]);
 
             byte flags = 0;
             if (block.Collide) flags |= 1 << 0;
             if (block.Damaged) flags |= 1 << 1;
             if (block.Throw) flags |= 1 << 2;
-            writeBytes(writer, [flags]);
-            writeBytes(writer, [block.DamageRate]);
-
-            writeZeros(writer, 4);
+            writeBytes([flags]);
+            writeBytes([block.DamageRate]);
         }
 
-        private void writePSBlock(BinaryWriter writer, PSBlock block)
+        private void writePSBlock(PSBlock block)
         {
-            writeBytes(writer, [block.PlayerTime]);
-            writeBytes(writer, [block.EnemyTime]);
-
-            writeZeros(writer, 13);
+            writeBytes([block.PlayerTime]);
+            writeBytes([block.EnemyTime]);
         }
 
-        private void writeCBlock(BinaryWriter writer, CBlock block)
+        private void writeCBlock(CBlock block)
         {
             byte flags = 0;
             if (block.Hits) flags |= 1 << 0;
             if (block.Uncond) flags |= 1 << 1;
             if (block.SkillCancelCondition) flags |= 1 << 3;
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
 
-            writeBytes(writer, [block.From]);
-            writeSkillReference(writer, block.Skill);
-            writeBytes(writer, [block.To]);
-
-            writeZeros(writer, 10);
+            writeBytes([block.From]);
+            writeSkillReference(block.Skill);
+            writeBytes([block.To]);
         }
 
-        private void writeVBlock(BinaryWriter writer, VBlock block)
+        private void writeVBlock(VBlock block)
         {
-            writeSkillBlockReference(writer, block.MultiCondSkill);
-            writeBytes(writer, [block.Var]);
+            writeSkillBlockReference(block.MultiCondSkill);
+            writeBytes([block.Var]);
 
             byte flags = 0;
             if (block.Replace) flags |= 1 << 0;
@@ -589,46 +575,40 @@ namespace Fm2ndParser.Compilers
             if (block.ItsAbove || block.ItsBelow) flags |= 1 << 3;
             if (block.UseEven) flags |= 1 << 7;
 
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
 
-            writeBytes(writer, [block.UseEvenVar]); // todo: write by var name ?
-            writeInt16(writer, block.Value);
+            writeBytes([block.UseEvenVar]); // todo: write by var name ?
+            writeInt16(block.Value);
 
-            writeInt16(writer, block.MultiCondValue);
-
-            writeZeros(writer, 5);
+            writeInt16(block.MultiCondValue);
         }
 
-        private void writeRndBlock(BinaryWriter writer, RndBlock block)
+        private void writeRndBlock(RndBlock block)
         {
-            writeUInt16(writer, block.RandomNum);
-            writeUInt16(writer, block.WhenItsAbove);
-            writeZeros(writer, 1);
-            writeSkillBlockReference(writer, block.Skill);
-            writeZeros(writer, 7);
+            writeUInt16(block.RandomNum);
+            writeUInt16(block.WhenItsAbove);
+            writeZeros(1);
+            writeSkillBlockReference(block.Skill);
         }
 
-        private void writeColorBlock(BinaryWriter writer, ColorBlock block)
+        private void writeColorBlock(ColorBlock block)
         {
-            writeBytes(writer, [(byte)block.Option]);
-            writeRgba(writer, block.Rgba);
-            writeZeros(writer, 10);
+            writeBytes([(byte)block.Option]);
+            writeRgba(block.Rgba);
         }
 
-        private void writeComBlock(BinaryWriter writer, ComBlock block)
+        private void writeComBlock(ComBlock block)
         {
-            writeSkillBlockReference(writer, block.Skill);
-            writeBytes(writer, [block.Time]);
+            writeSkillBlockReference(block.Skill);
+            writeBytes([block.Time]);
             for (int i = 0; i < 5; i++)
             {
                 var step = block.Steps.ElementAt(i);
-                writeCommandStep(writer, step);
+                writeCommandStep(step);
             }
-
-            writeZeros(writer, 1);
         }
 
-        protected void writeCommandStep(BinaryWriter writer, CommandStep step)
+        protected void writeCommandStep(CommandStep step)
         {
             byte flags1 = 0;
             byte flags2 = 0;
@@ -646,62 +626,60 @@ namespace Fm2ndParser.Compilers
             flags1 |= (byte)step.Direction;
             flags2 |= (byte)(((byte)step.Type) << 6);
 
-            writeBytes(writer, [flags1, flags2]);
+            writeBytes([flags1, flags2]);
         }
 
-        private void writeAIBlock(BinaryWriter writer, AIBlock block)
+        private void writeAIBlock(AIBlock block)
         {
-            writeZeros(writer, 2);
+            writeZeros(2);
 
-            writeBytes(writer, [block.Num]);
-            writeBytes(writer, [block.Time]);
-            writeBytes(writer, [(byte)block.Option]);
-            writeBytes(writer, [(byte)block.FadingType]);
-            writeRgba(writer, block.Rgba);
-
-            writeZeros(writer, 5);
+            writeBytes([block.Num]);
+            writeBytes([block.Time]);
+            writeBytes([(byte)block.Option]);
+            writeBytes([(byte)block.FadingType]);
+            writeRgba(block.Rgba);
         }
 
         #endregion
 
         #region write base
-        protected void writeSkillReference(BinaryWriter writer, SkillReference skill)
+        protected void writeSkillReference(SkillReference skill)
         {
-            writeUInt16(writer, skill.Number);  // todo get number from skill reference
+            writeUInt16(skill.Number);  // todo get number from skill reference
         }
 
-        protected void writeSkillBlockReference(BinaryWriter writer, SkillBlockReference skill)
+        protected void writeSkillBlockReference(SkillBlockReference skill)
         {
-            writeUInt16(writer, skill.Number);  // todo get number from skill reference
-            writeBytes(writer, [skill.Block]);
+            writeUInt16(skill.Number);  // todo get number from skill reference
+            writeBytes([skill.Block]);
         }
 
-        protected void writeHitJunctionBlock(BinaryWriter writer, SkillReference skillReference)
+        protected void writeHitJunctionBlock(SkillReference skillReference)
         {
-            writeUInt16(writer, skillReference.Number);
+            writeUInt16(skillReference.Number);
         }
 
-        protected void writeRgba(BinaryWriter writer, Rgba rgba)
+        protected void writeRgba(Rgba rgba)
         {
-            writeBytes(writer, [rgba.R, rgba.G, rgba.B, rgba.A]);
+            writeBytes([rgba.R, rgba.G, rgba.B, rgba.A]);
         }
 
-        private void writeEBShakeBG(BinaryWriter writer, EBShakeBg shakeBgX)
+        private void writeEBShakeBG(EBShakeBg shakeBgX)
         {
-            writeBytes(writer, [(byte)shakeBgX.Type]);
-            writeBytes(writer, [shakeBgX.Shake]);
-            writeBytes(writer, [shakeBgX.Duration]);
+            writeBytes([(byte)shakeBgX.Type]);
+            writeBytes([shakeBgX.Shake]);
+            writeBytes([shakeBgX.Duration]);
         }
 
-        protected void writeInt16(BinaryWriter writer, short value)
+        protected void writeInt16(short value)
         {
-            writer.Write(value);
+            _writer.Write(value);
         }
 
-        protected void writeZeros(BinaryWriter writer, int count)
+        protected void writeZeros(int count)
         {
             var array = Array.CreateInstance(typeof(byte), count);
-            writeBytes(writer, (byte[])array);
+            writeBytes((byte[])array);
         }
 
         private BlockType toBlockType(string type)
@@ -709,34 +687,34 @@ namespace Fm2ndParser.Compilers
             return Enum.Parse<BlockType>(type, true);
         }
 
-        protected void writeUInt16(BinaryWriter writer, ushort value)
+        protected void writeUInt16(ushort value)
         {
-            writer.Write(value);
+            _writer.Write(value);
         }
 
-        protected void writeUInt32(BinaryWriter writer, uint value)
+        protected void writeUInt32(uint value)
         {
-            writer.Write(value);
+            _writer.Write(value);
         }
 
-        protected void writeString(BinaryWriter writer, string value, int? length = null)
+        protected void writeString(string value, int? length = null)
         {
             var bytes = Encoding.GetEncoding(932).GetBytes(value);
             if (length.HasValue)
             {
                 Array.Resize(ref bytes, length.Value);
             }
-            writer.Write(bytes);
+            _writer.Write(bytes);
         }
 
-        protected void writeInt8(BinaryWriter writer, sbyte value)
+        protected void writeInt8(sbyte value)
         {
-            writer.Write(value);
+            _writer.Write(value);
         }
 
-        protected void writeBytes(BinaryWriter writer, byte[] value)
+        protected void writeBytes(byte[] value)
         {
-            writer.Write(value);
+            _writer.Write(value);
         }
         #endregion
     }

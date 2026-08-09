@@ -34,6 +34,7 @@ namespace Fm2ndParser
                 "RP" => new RPBlock(),
                 "GC" => new GCBlock(),
                 "R" => new RBlock(),
+                "DB" => new DBBlock(),
                 "FA" => new FABlock(),
                 "FD" => new FDBlock(),
                 "PS" => new PSBlock(),

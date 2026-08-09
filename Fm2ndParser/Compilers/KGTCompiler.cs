@@ -13,100 +13,97 @@ namespace Fm2ndParser.Compilers
 {
     public class KGTCompiler : BaseCompiler<KGTFile>
     {
-        public KGTCompiler(string filename, KGTFile kgtFile)
-            : base(filename, kgtFile)
-        {
+        public KGTCompiler(KGTFile kgtFile)
+            : base(kgtFile, kgtFile) { }
 
+        override protected void CompileInternal()
+        {
+            base.CompileInternal();
+
+            writeZeros(4);
+
+            writeCharacters();
+            writeHitJunctions();
+
+            writeBytes([0x02]);
+
+            writeZeros(4);
+
+            writeStiffTime();
+            writeStages();
+            writeDemos();
+            writeScreenSelect();
+            writeZeros(2);
+
+            writeBaseSettings();
+            writeZeros(3);
+
+            writeCommonImages();
+            writeBuiltInSkills();
+
+            writeZeros(0x38);
+
+            writeSelectionScreen();
+            writeCharactersSettings();
+
+            writeZeros(0x3B2);
         }
 
-        override protected void CompileInternal(BinaryWriter writer)
-        {
-            base.CompileInternal(writer);
-
-            writeZeros(writer, 4);
-
-            writeCharacters(writer);
-            writeHitJunctions(writer);
-
-            writeBytes(writer, [0x02]);
-
-            writeZeros(writer, 4);
-
-            writeStiffTime(writer);
-            writeStages(writer);
-            writeDemos(writer);
-            writeScreenSelect(writer);
-            writeZeros(writer, 2);
-
-            writeBaseSettings(writer);
-            writeZeros(writer, 3);
-
-            writeCommonImages(writer);
-            writeBuiltInSkills(writer);
-
-            writeZeros(writer, 0x38);
-
-            writeSelectionScreen(writer);
-            writeCharactersSettings(writer);
-
-            writeZeros(writer, 0x3B2);
-        }
-
-        private void writeCharacters(BinaryWriter writer)
+        private void writeCharacters()
         {
             for (int i = 0; i < 50; i++)
             {
                 var character = _fmFile.Characters.ElementAtOrDefault(i)?.Name ?? "";
                 if (character != null)
-                    writeString(writer, character, 0x100);
+                    writeString(character, 0x100);
             }
         }
 
-        private void writeHitJunctions(BinaryWriter writer)
+        private void writeHitJunctions()
         {
             for (int i = 0; i < 200; i++)
             {
                 var hit = _fmFile.HitJunctions.ElementAtOrDefault(i) ?? new HitJunction { Name = "", Active = false };
                 if (hit != null)
                 {
-                    writeString(writer, hit.Name, 0x20);
-                    writeUInt32(writer, hit.Active ? 1u : 0u);
+                    writeString(hit.Name, 0x20);
+                    writeUInt32(hit.Active ? 1u : 0u);
                 }
             }
         }
 
-        private void writeStiffTime(BinaryWriter writer)
+        private void writeStiffTime()
         {
-            writeBytes(writer, [
+            writeBytes([
                 _fmFile.BaseSettings.StiffTime.Hit,
                 _fmFile.BaseSettings.StiffTime.Guard,
                 _fmFile.BaseSettings.StiffTime.Offset,
             ]);
         }
 
-        private void writeStages(BinaryWriter writer)
+        private void writeStages()
         {
             for (int i = 0; i < 50; i++)
             {
                 var stage = _fmFile.Stages.ElementAtOrDefault(i) ?? "";
                 if (stage != null)
-                    writeString(writer, stage, 0x100);
+                    writeString(stage, 0x100);
             }
         }
 
-        private void writeDemos(BinaryWriter writer)
+        private void writeDemos()
         {
             for (int i = 0; i < 100; i++)
             {
                 var demo = _fmFile.Demos.ElementAtOrDefault(i) ?? "";
                 if (demo != null)
-                    writeString(writer, demo, 0x100);
+                    writeString(demo, 0x100);
             }
         }
 
-        private void writeScreenSelect(BinaryWriter writer)
+        private void writeScreenSelect()
         {
-            writeBytes(writer, [
+            writeBytes([
                 _fmFile.BaseSettings.Select.TitleScreen,
                 _fmFile.BaseSettings.Select.P1vsCPU,
                 _fmFile.BaseSettings.Select.P1vsP2,
@@ -116,7 +113,7 @@ namespace Fm2ndParser.Compilers
             ]);
         }
 
-        private void writeBaseSettings(BinaryWriter writer)
+        private void writeBaseSettings()
         {
             byte flags = 0;
 
@@ -128,148 +125,148 @@ namespace Fm2ndParser.Compilers
             if (_fmFile.BaseSettings.NumbersOnHPLifeBar) flags |= 1 << 5;
             if (_fmFile.BaseSettings.CursorAppearsPressingAButton) flags |= 1 << 6;
 
-            writeBytes(writer, [flags]);
+            writeBytes([flags]);
         }
 
-        private void writeCommonImages(BinaryWriter writer)
+        private void writeCommonImages()
         {
             for (int i = 0; i < 200; i++)
             {
                 var commonImage = _fmFile.CommonImages.ElementAtOrDefault(i) ?? "";
                 if (commonImage != null)
-                    writeString(writer, commonImage, 0x20);
+                    writeString(commonImage, 0x20);
             }
         }
 
-        private void writeBuiltInSkills(BinaryWriter writer)
+        private void writeBuiltInSkills()
         {
             var s = _fmFile.BuiltInSkills;
-            writeUInt16(writer, s.None);
-            writeUInt16(writer, s.HitLetterHit);
-            writeUInt16(writer, s.HitNumber0);
-            writeUInt16(writer, s.HitNumber1);
-            writeUInt16(writer, s.HitNumber2);
-            writeUInt16(writer, s.HitNumber3);
-            writeUInt16(writer, s.HitNumber4);
-            writeUInt16(writer, s.HitNumber5);
-            writeUInt16(writer, s.HitNumber6);
-            writeUInt16(writer, s.HitNumber7);
-            writeUInt16(writer, s.HitNumber8);
-            writeUInt16(writer, s.HitNumber9);
-            writeUInt16(writer, s.OffsetHitMark);
-            writeUInt16(writer, s.RoundAniStarttime);
-            writeUInt16(writer, s.RoundAniEndtime);
-            writeUInt16(writer, s.Round1);
-            writeUInt16(writer, s.Round2);
-            writeUInt16(writer, s.Round3);
-            writeUInt16(writer, s.Round4);
-            writeUInt16(writer, s.Round5);
-            writeUInt16(writer, s.Round6);
-            writeUInt16(writer, s.Round7);
-            writeUInt16(writer, s.Round8);
-            writeUInt16(writer, s.Round9);
-            writeUInt16(writer, s.RoundFinal);
-            writeUInt16(writer, s.Spirits);
-            writeUInt16(writer, s.KO);
-            writeUInt16(writer, s.Perfect);
-            writeUInt16(writer, s.YouWin);
-            writeUInt16(writer, s.YouLose);
-            writeUInt16(writer, s.P1Wins);
-            writeUInt16(writer, s.P2Wins);
-            writeUInt16(writer, s.Draw);
-            writeUInt16(writer, s.DoubleKo);
-            writeUInt16(writer, s.UnlimitedSign);
-            writeUInt16(writer, s.TimeNumber0);
-            writeUInt16(writer, s.TimeNumber1);
-            writeUInt16(writer, s.TimeNumber2);
-            writeUInt16(writer, s.TimeNumber3);
-            writeUInt16(writer, s.TimeNumber4);
-            writeUInt16(writer, s.TimeNumber5);
-            writeUInt16(writer, s.TimeNumber6);
-            writeUInt16(writer, s.TimeNumber7);
-            writeUInt16(writer, s.TimeNumber8);
-            writeUInt16(writer, s.TimeNumber9);
-            writeUInt16(writer, s.SpecialStockNumber0);
-            writeUInt16(writer, s.SpecialStockNumber1);
-            writeUInt16(writer, s.SpecialStockNumber2);
-            writeUInt16(writer, s.SpecialStockNumber3);
-            writeUInt16(writer, s.SpecialStockNumber4);
-            writeUInt16(writer, s.SpecialStockNumber5);
-            writeUInt16(writer, s.SpecialStockNumber6);
-            writeUInt16(writer, s.SpecialStockNumber7);
-            writeUInt16(writer, s.SpecialStockNumber8);
-            writeUInt16(writer, s.SpecialStockNumber9);
-            writeUInt16(writer, s.VictoryMarkOn);
-            writeUInt16(writer, s.VictoryMarkOff);
-            writeUInt16(writer, s.StageLayout1);
-            writeUInt16(writer, s.StageLayout2);
-            writeUInt16(writer, s.StageLayout3);
-            writeUInt16(writer, s.StageLayout4);
-            writeUInt16(writer, s.StageLayout5);
-            writeUInt16(writer, s.StageLayout6);
-            writeUInt16(writer, s.StageLayout7);
-            writeUInt16(writer, s.StageLayout8);
-            writeUInt16(writer, s.StageLayout9);
-            writeUInt16(writer, s.StageLayout10);
-            writeUInt16(writer, s.P1LifeGauge);
-            writeUInt16(writer, s.P2LifeGauge);
-            writeUInt16(writer, s.P1SpecialGauge);
-            writeUInt16(writer, s.P2SpecialGauge);
-            writeUInt16(writer, s.PositionTimer);
-            writeUInt16(writer, s.Pos1pFace);
-            writeUInt16(writer, s.Pos2pFace);
-            writeUInt16(writer, s.PosSpecialStock1p);
-            writeUInt16(writer, s.PosSpecialStock2p);
-            writeUInt16(writer, s.PosVictoryMark1p);
-            writeUInt16(writer, s.VPosVictoryMark2p);
-            writeUInt16(writer, s.TitleCursor);
-            writeUInt16(writer, s.PositionForStoryMode);
-            writeUInt16(writer, s.PositionForVsMode);
-            writeUInt16(writer, s.ContinuteCursor);
-            writeUInt16(writer, s.PositionCursorItDoes);
-            writeUInt16(writer, s.PositionCursorItDoesNot);
-            writeUInt16(writer, s.P1VsScreenCursor);
-            writeUInt16(writer, s.P2VsScreenCursor);
-            writeUInt16(writer, s.P1VsScreenCursorAfterInput);
-            writeUInt16(writer, s.P2VsScreenCursorAfterInput);
-            writeUInt16(writer, s.PosCursorForTeamBattle);
-            writeUInt16(writer, s.Pause);
-            writeUInt16(writer, s.Spare6);
-            writeUInt16(writer, s.Spare7);
-            writeUInt16(writer, s.Spare8);
-            writeUInt16(writer, s.Spare9);
-            writeUInt16(writer, s.Spare10);
-            writeUInt16(writer, s.Spare11);
-            writeUInt16(writer, s.Spare12);
-            writeUInt16(writer, s.Spare13);
-            writeUInt16(writer, s.Spare14);
-            writeUInt16(writer, s.Spare15);
-            writeUInt16(writer, s.Spare16);
-            writeUInt16(writer, s.Spare17);
-            writeUInt16(writer, s.Spare18);
-            writeUInt16(writer, s.Spare19);
+            writeUInt16(s.None);
+            writeUInt16(s.HitLetterHit);
+            writeUInt16(s.HitNumber0);
+            writeUInt16(s.HitNumber1);
+            writeUInt16(s.HitNumber2);
+            writeUInt16(s.HitNumber3);
+            writeUInt16(s.HitNumber4);
+            writeUInt16(s.HitNumber5);
+            writeUInt16(s.HitNumber6);
+            writeUInt16(s.HitNumber7);
+            writeUInt16(s.HitNumber8);
+            writeUInt16(s.HitNumber9);
+            writeUInt16(s.OffsetHitMark);
+            writeUInt16(s.RoundAniStarttime);
+            writeUInt16(s.RoundAniEndtime);
+            writeUInt16(s.Round1);
+            writeUInt16(s.Round2);
+            writeUInt16(s.Round3);
+            writeUInt16(s.Round4);
+            writeUInt16(s.Round5);
+            writeUInt16(s.Round6);
+            writeUInt16(s.Round7);
+            writeUInt16(s.Round8);
+            writeUInt16(s.Round9);
+            writeUInt16(s.RoundFinal);
+            writeUInt16(s.Spirits);
+            writeUInt16(s.KO);
+            writeUInt16(s.Perfect);
+            writeUInt16(s.YouWin);
+            writeUInt16(s.YouLose);
+            writeUInt16(s.P1Wins);
+            writeUInt16(s.P2Wins);
+            writeUInt16(s.Draw);
+            writeUInt16(s.DoubleKo);
+            writeUInt16(s.UnlimitedSign);
+            writeUInt16(s.TimeNumber0);
+            writeUInt16(s.TimeNumber1);
+            writeUInt16(s.TimeNumber2);
+            writeUInt16(s.TimeNumber3);
+            writeUInt16(s.TimeNumber4);
+            writeUInt16(s.TimeNumber5);
+            writeUInt16(s.TimeNumber6);
+            writeUInt16(s.TimeNumber7);
+            writeUInt16(s.TimeNumber8);
+            writeUInt16(s.TimeNumber9);
+            writeUInt16(s.SpecialStockNumber0);
+            writeUInt16(s.SpecialStockNumber1);
+            writeUInt16(s.SpecialStockNumber2);
+            writeUInt16(s.SpecialStockNumber3);
+            writeUInt16(s.SpecialStockNumber4);
+            writeUInt16(s.SpecialStockNumber5);
+            writeUInt16(s.SpecialStockNumber6);
+            writeUInt16(s.SpecialStockNumber7);
+            writeUInt16(s.SpecialStockNumber8);
+            writeUInt16(s.SpecialStockNumber9);
+            writeUInt16(s.VictoryMarkOn);
+            writeUInt16(s.VictoryMarkOff);
+            writeUInt16(s.StageLayout1);
+            writeUInt16(s.StageLayout2);
+            writeUInt16(s.StageLayout3);
+            writeUInt16(s.StageLayout4);
+            writeUInt16(s.StageLayout5);
+            writeUInt16(s.StageLayout6);
+            writeUInt16(s.StageLayout7);
+            writeUInt16(s.StageLayout8);
+            writeUInt16(s.StageLayout9);
+            writeUInt16(s.StageLayout10);
+            writeUInt16(s.P1LifeGauge);
+            writeUInt16(s.P2LifeGauge);
+            writeUInt16(s.P1SpecialGauge);
+            writeUInt16(s.P2SpecialGauge);
+            writeUInt16(s.PositionTimer);
+            writeUInt16(s.Pos1pFace);
+            writeUInt16(s.Pos2pFace);
+            writeUInt16(s.PosSpecialStock1p);
+            writeUInt16(s.PosSpecialStock2p);
+            writeUInt16(s.PosVictoryMark1p);
+            writeUInt16(s.VPosVictoryMark2p);
+            writeUInt16(s.TitleCursor);
+            writeUInt16(s.PositionForStoryMode);
+            writeUInt16(s.PositionForVsMode);
+            writeUInt16(s.ContinuteCursor);
+            writeUInt16(s.PositionCursorItDoes);
+            writeUInt16(s.PositionCursorItDoesNot);
+            writeUInt16(s.P1VsScreenCursor);
+            writeUInt16(s.P2VsScreenCursor);
+            writeUInt16(s.P1VsScreenCursorAfterInput);
+            writeUInt16(s.P2VsScreenCursorAfterInput);
+            writeUInt16(s.PosCursorForTeamBattle);
+            writeUInt16(s.Pause);
+            writeUInt16(s.Spare6);
+            writeUInt16(s.Spare7);
+            writeUInt16(s.Spare8);
+            writeUInt16(s.Spare9);
+            writeUInt16(s.Spare10);
+            writeUInt16(s.Spare11);
+            writeUInt16(s.Spare12);
+            writeUInt16(s.Spare13);
+            writeUInt16(s.Spare14);
+            writeUInt16(s.Spare15);
+            writeUInt16(s.Spare16);
+            writeUInt16(s.Spare17);
+            writeUInt16(s.Spare18);
+            writeUInt16(s.Spare19);
         }
 
-        private void writeSelectionScreen(BinaryWriter writer)
+        private void writeSelectionScreen()
         {
             var s = _fmFile.SelectionScreen;
-            writeUInt16(writer, s.CharStartPosX);
-            writeUInt16(writer, s.CharStartPosY);
-            writeUInt16(writer, s.DistanceBetweenCharsX);
-            writeUInt16(writer, s.DistanceBetweenCharsY);
-            writeUInt16(writer, s.Columns);
-            writeUInt16(writer, s.Rows);
-            writeUInt16(writer, s.P1CursorPosX);
-            writeUInt16(writer, s.P1CursorPosY);
-            writeInt16(writer, s.P1TeamBattleDiscanceX);
-            writeInt16(writer, s.P1TeamBattleDiscanceY);
-            writeUInt16(writer, s.P2CursorPosX);
-            writeUInt16(writer, s.P2CursorPosY);
-            writeInt16(writer, s.P2TeamBattleDiscanceX);
-            writeInt16(writer, s.P2TeamBattleDiscanceY);
+            writeUInt16(s.CharStartPosX);
+            writeUInt16(s.CharStartPosY);
+            writeUInt16(s.DistanceBetweenCharsX);
+            writeUInt16(s.DistanceBetweenCharsY);
+            writeUInt16(s.Columns);
+            writeUInt16(s.Rows);
+            writeUInt16(s.P1CursorPosX);
+            writeUInt16(s.P1CursorPosY);
+            writeInt16(s.P1TeamBattleDiscanceX);
+            writeInt16(s.P1TeamBattleDiscanceY);
+            writeUInt16(s.P2CursorPosX);
+            writeUInt16(s.P2CursorPosY);
+            writeInt16(s.P2TeamBattleDiscanceX);
+            writeInt16(s.P2TeamBattleDiscanceY);
         }
 
-        private void writeCharactersSettings(BinaryWriter writer)
+        private void writeCharactersSettings()
         {
             for (int i = 0; i < 50; i++)
             {
@@ -281,7 +278,7 @@ namespace Fm2ndParser.Compilers
                     if (character.EnabledForStoryMode) flags |= 1 << 0;
                     if (character.EnabledForVsMode) flags |= 1 << 1;
                 }
-                writeBytes(writer, [flags]);
+                writeBytes([flags]);
             }
         }
     }

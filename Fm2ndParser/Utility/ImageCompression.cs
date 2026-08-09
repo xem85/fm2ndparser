@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Fm2ndParser.Parsers
+namespace Fm2ndParser.Utility
 {
     public static class ImageCompression
     {

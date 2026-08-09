@@ -1,6 +1,7 @@
 ﻿using Fm2ndParser.Character;
 using Fm2ndParser.Common;
 using Fm2ndParser.Demo;
+using Fm2ndParser.Kgt;
 using Fm2ndParser.Stage;
 using System;
 using System.Collections.Generic;
@@ -11,21 +12,19 @@ namespace Fm2ndParser.Compilers
 {
     public class StageCompiler : BaseCompiler<StageFile>
     {
-        public StageCompiler(string filename, StageFile stageFile)
-            : base(filename, stageFile)
+        public StageCompiler(StageFile stageFile, KGTFile kgtFile)
+            : base(stageFile, kgtFile) { }
+
+        override protected void CompileInternal()
         {
+            base.CompileInternal();
 
-        }
+            writeZeros(4);
 
-        override protected void CompileInternal(BinaryWriter writer)
-        {
-            base.CompileInternal(writer);
+            writeUInt16((ushort)_fmFile.BGM.Number);
 
-            writeZeros(writer, 4);
-
-            writeUInt16(writer, (ushort)_fmFile.BGM.Number);
-
-            writeZeros(writer, 1024);
+            writeZeros(1024);
+            writeZeros(7);
         }
     }
 }

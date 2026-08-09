@@ -1,10 +1,13 @@
 ﻿using Fm2ndParser.Common;
 using Fm2ndParser.Kgt;
+using Newtonsoft.Json;
 
 namespace Fm2ndParser
 {
     public class SettingsBlock : Block
     {
+        [JsonIgnore]
+        public byte[] Data { get; set; }
         public uint Level { get; set; }
         public SettingsType SettingsType { get; set; }
         public HitMarkPosition Position { get; set; }

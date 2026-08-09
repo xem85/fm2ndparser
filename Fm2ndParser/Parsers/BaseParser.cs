@@ -1,6 +1,8 @@
-﻿using Fm2ndParser.Character;
+﻿using Fm2ndParser.Blocks;
+using Fm2ndParser.Character;
 using Fm2ndParser.Common;
 using Fm2ndParser.Kgt;
+using Fm2ndParser.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,12 +17,14 @@ using System.Xml.Linq;
 
 namespace Fm2ndParser.Parsers
 {
-    public abstract class BaseParser<T> where T : FMFile, new()
+    public abstract class BaseParser<T>
+        where T : FMFile, new()
     {
         protected string _filename;
         protected KGTFile _kgt;
         protected IList<Skill> _skills;
         protected IList<SkillBlockReference> _skillBlockRefs = new List<SkillBlockReference>();
+        private BinaryReader _reader;
 
         public abstract string FileExtension { get; }
 
@@ -32,18 +36,15 @@ namespace Fm2ndParser.Parsers
 
         public T Parse()
         {
-            var file = File.ReadAllBytes(_filename);
-            Span<byte> bytes = file;
-
-            var offset = 0;
-
-            return ParseInternal(bytes, ref offset);
+            using var stream = File.OpenRead(_filename);
+            using var reader = _reader = new BinaryReader(stream);
+            return ParseInternal();
         }
 
-        protected virtual T ParseInternal(Span<byte> bytes, ref int offset)
+        protected virtual T ParseInternal()
         {
-            var type = getString(bytes, 12, ref offset);
-            var loadedFlags = getUInt32(bytes, ref offset);
+            var type = getString(12);
+            var loadedFlags = getUInt32();
             var loaded = loadedFlags == 1;
 
             if (type.StartsWith("2DKGT2G"))
@@ -51,24 +52,25 @@ namespace Fm2ndParser.Parsers
             if (!type.StartsWith("2DKGT2K"))
                 throw new InvalidDataException($"Not a valid Fighter Maker 2nd file: {_filename}");
 
-            var name = getString(bytes, 256, ref offset);
+            var name = getString(256);
 
-            _skills = readSkills(bytes, ref offset);
+            _skills = readSkills();
 
-            readSkillsBlocks(_skills, bytes, ref offset);
-            setSkillBlockTypes();
+            readSkillsBlocks(_skills);
+            setSkillReferenceBlockTypes();
 
-            var images = readImages(bytes, ref offset);
+            var images = readImages();
 
-            var palettes = readGlobalPalettes(bytes, ref offset);
+            var palettes = readGlobalPalettes();
 
-            var sounds = readSounds(bytes, ref offset);
+            var sounds = readSounds();
 
             setSoundBlockNames(sounds);
 
             var result = new T
             {
                 Type = Path.GetExtension(_filename).ToLowerInvariant().Substring(1),
+                Loaded = loaded,
                 Name = name,
                 Skills = _skills,
                 Images = images,
@@ -79,54 +81,31 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
-
-        protected string getString(Span<byte> bytes, int length, ref int offset)
+        protected void readSkillsBlocks(IList<Skill> skills)
         {
-            var word = getWord(bytes, length, ref offset);
-            var zeroIndex = word.IndexOf((byte)0);
-            var slice = zeroIndex >= 0 ? word.Slice(0, zeroIndex) : word;
-
-            // CP932 (Shift_JIS Microsoft variant)
-            var result = Encoding.GetEncoding(932).GetString(slice);
-            //var result = Encoding.Default.GetString(slice).Trim();
-            //var result = Encoding.Default.GetString(word).Replace("\0", "").Trim();
-            return result;
-        }
-
-        protected void readSkillsBlocks(IList<Skill> skills, Span<byte> bytes, ref int offset)
-        {
-            var blocksCount = getUInt32(bytes, ref offset);
-
-            var blocks = new List<Block>();
-            var blocksData = new List<byte[]>();
-            for (int i = 0; i < blocksCount; i++)
-            {
-                blocksData.Add(getWord(bytes, 16, ref offset).ToArray());
-            }
+            var blocksCount = getUInt32();
 
             for (int i = 0; i < skills.Count - 1; i++)  // .Count - 1 because the last skill is empty
             {
                 var skill = skills[i];
                 var skillBlocksCount = skills[i + 1].Position - skill.Position;
 
-                foreach (var blockData in blocksData.Skip(skill.Position).Take(skillBlocksCount))
+                for (int j = 0; j < skillBlocksCount; j++)
                 {
-                    var block = parseBlock(blockData);
+                    var block = parseBlock();
                     block.Index = skill.Blocks.Count();
                     skill.Blocks.Add(block);
                 }
             }
         }
 
-        protected SettingsBlock parseSettingsBlock(Span<byte> data)
+        protected SettingsBlock parseSettingsBlock()
         {
-            var offset = 0;
-            var type = getByte(data, ref offset);
-
+            var data = getBytes(15);
 
             var result = new SettingsBlock
             {
-                Data = data.ToArray(),
+                Data = data,
                 Type = "Settings",
             };
             return result;
@@ -145,9 +124,7 @@ namespace Fm2ndParser.Parsers
 
         protected void setSettingsBlockData(SettingsBlock settings, SettingsType settingsType)
         {
-            var data = settings.Data;
-            var offset = 0;
-            var type = getByte(data, ref offset);
+            using var reader = new BinaryReader(new MemoryStream(settings.Data));
 
             settings.SettingsType = settingsType;
 
@@ -156,130 +133,161 @@ namespace Fm2ndParser.Parsers
             }
             else if (settingsType == SettingsType.HitMark)
             {
-                settings.Position = (HitMarkPosition)getByte(data, ref offset);
-                settings.NumberWidth = getByte(data, ref offset);
+                settings.Position = (HitMarkPosition)reader.ReadByte();
+                settings.NumberWidth = reader.ReadByte();
             }
             else if (settingsType == SettingsType.Time)
             {
-                settings.Time = getUInt32(data, ref offset);
+                settings.Time = reader.ReadUInt32();
             }
             else if (settingsType == SettingsType.Position)
             {
-                settings.X = getInt16(data, ref offset);
-                settings.Y = getInt16(data, ref offset);
-                settings.Width = getByte(data, ref offset);
+                settings.X = reader.ReadInt16();
+                settings.Y = reader.ReadInt16();
+                settings.Width = reader.ReadByte();
             }
             else if (settingsType == SettingsType.MarkPosition)
             {
-                settings.X = getInt16(data, ref offset);
-                settings.Y = getInt16(data, ref offset);
-                settings.Width = getInt8(data, ref offset);
-                settings.Height = getInt8(data, ref offset);
+                settings.X = reader.ReadInt16();
+                settings.Y = reader.ReadInt16();
+                settings.Width = reader.ReadSByte();
+                settings.Height = reader.ReadSByte();
             }
             else if (settingsType == SettingsType.Character)
             {
-                skipEmptyBytes(data, 1, ref offset);
-                settings.Level = getByte(data, ref offset);
+                var empty = reader.ReadByte();
+                Debug.Assert(empty == 0);
+                settings.Level = reader.ReadByte();
             }
             else if (settingsType == SettingsType.Stage)
             {
                 // todo verify
-                var flags = getByte(data, ref offset);
+                var flags = reader.ReadByte();
                 settings.ConnectLtRt = isFlagOn(flags, 1);
                 settings.ConnectUpDw = isFlagOn(flags, 2);
                 settings.WidthEnabled = isFlagOn(flags, 3);
                 settings.HeightEnabled = isFlagOn(flags, 4);
-                settings.Width = getInt16(data, ref offset);
-                settings.Height = getInt16(data, ref offset);
+                settings.Width = reader.ReadInt16();
+                settings.Height = reader.ReadInt16();
             }
 
         }
 
-        protected Block parseBlock(Span<byte> data)
+        protected Block parseBlock()
         {
-            var offset = 0;
-            var type = getByte(data, ref offset);
-
+            var startPosition = _reader.BaseStream.Position;
+            var type = getByte();
+            Block block = null;
             switch (type)
             {
                 case 0:
-                    return parseSettingsBlock(data);
+                    block = parseSettingsBlock();
+                    break;
                 case 1:
-                    return parseMBlock(data, ref offset);
+                    block = parseMBlock();
+                    break;
                 case 2:
-                    return parseDSBlock(data, ref offset);
+                    block = parseDSBlock();
+                    break;
                 case 3:
-                    return parseSBlock(data, ref offset);
+                    block = parseSBlock();
+                    break;
                 case 4:
-                    return parseOBlock(data, ref offset);
+                    block = parseOBlock();
+                    break;
                 case 5:
-                    return parseEBlock(data, ref offset);
+                    block = parseEBlock();
+                    break;
                 case 7:
-                    return parseRCBlock(data, ref offset);
+                    block = parseRCBlock();
+                    break;
                 case 9:
-                    return parseSFBlock(data, ref offset);
+                    block = parseSFBlock();
+                    break;
                 case 10:
-                    return parseSGBlock(data, ref offset);
+                    block = parseSGBlock();
+                    break;
                 case 11:
-                    return parseSCBlock(data, ref offset);
+                    block = parseSCBlock();
+                    break;
                 case 12:
-                    return parseIBlock(data, ref offset);
+                    block = parseIBlock();
+                    break;
                 case 14:
-                    return parseEBBlock(data, ref offset);
+                    block = parseEBBlock();
+                    break;
                 case 16:
-                    return parseGSBlock(data, ref offset);
+                    block = parseGSBlock();
+                    break;
                 case 17:
-                    return parseGLBlock(data, ref offset);
+                    block = parseGLBlock();
+                    break;
                 case 20:
-                    return parseRPBlock(data, ref offset);
+                    block = parseRPBlock();
+                    break;
                 case 21:
-                    return parseGCBlock(data, ref offset);
+                    block = parseGCBlock();
+                    break;
+                case 22:
+                    block = parseDBBlock();
+                    break;
                 case 23:
-                    return parseRBlock(data, ref offset);
+                    block = parseRBlock();
+                    break;
                 case 24:
-                    return parseFABlock(data, ref offset);
+                    block = parseFABlock();
+                    break;
                 case 25:
-                    return parseFDBlock(data, ref offset);
+                    block = parseFDBlock();
+                    break;
                 case 26:
-                    return parsePSBlock(data, ref offset);
+                    block = parsePSBlock();
+                    break;
                 case 30:
-                    return parseCBlock(data, ref offset);
+                    block = parseCBlock();
+                    break;
                 case 31:
-                    return parseVBlock(data, ref offset);
+                    block = parseVBlock();
+                    break;
                 case 32:
-                    return parseRndBlock(data, ref offset);
+                    block = parseRndBlock();
+                    break;
                 case 35:
-                    return parseColorBlock(data, ref offset);
+                    block = parseColorBlock();
+                    break;
                 case 36:
-                    return parseComBlock(data, ref offset);
+                    block = parseComBlock();
+                    break;
                 case 37:
-                    return parseAIBlock(data, ref offset);
+                    block = parseAIBlock();
+                    break;
 
                 default:
-                    return new UnknownBlock
-                    {
-                        Type = "Unknown",
-                        Data = data.ToArray(),
-                    };
+                    throw new NotImplementedException($"Block type {type} not implemented");
             }
+
+            var readBytes = _reader.BaseStream.Position - startPosition;
+            skipEmptyBytes(16 - readBytes);
+
+            return block;
         }
 
         protected abstract SettingsType getSettingsType(uint skillIdx);
 
         #region Blocks Parsing
-        protected Block parseMBlock(Span<byte> data, ref int offset)
+        protected Block parseMBlock()
         {
             var block = new MBlock
             {
                 // 1
                 Type = "M",
-                Data = data.ToArray(),
-                GravityX = getInt16(data, ref offset),
-                MoveX = getInt16(data, ref offset),
-                MoveY = getInt16(data, ref offset),
-                GravityY = getInt16(data, ref offset),
+
+                GravityX = getInt16(),
+                MoveX = getInt16(),
+                MoveY = getInt16(),
+                GravityY = getInt16(),
             };
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Add = isFlagOn(flags, 0);
             block.StopMoveX = isFlagOn(flags, 1);
             block.StopMoveY = isFlagOn(flags, 2);
@@ -288,29 +296,29 @@ namespace Fm2ndParser.Parsers
             return block;
         }
 
-        protected Block parseDSBlock(Span<byte> data, ref int offset)
+        protected Block parseDSBlock()
         {
             var block = new DSBlock
             {
                 // 2
                 Type = "DS",
-                Data = data.ToArray(),
-                When = (DSSkill)getByte(data, ref offset),
-                Skill = getSkillBlock(data, ref offset),
+
+                When = (DSSkill)getByte(),
+                Skill = getSkillBlock(),
             };
             return block;
         }
 
-        protected Block parseSBlock(Span<byte> data, ref int offset)
+        protected Block parseSBlock()
         {
-            var unknown = getByte(data, ref offset);
-            var sound = getUInt16(data, ref offset);
+            var unknown = getByte();
+            var sound = getUInt16();
 
             var block = new SBlock
             {
                 // 3
                 Type = "S",
-                Data = data.ToArray(),
+
                 Sound = new SkillReference
                 {
                     Number = sound,
@@ -320,15 +328,15 @@ namespace Fm2ndParser.Parsers
             return block;
         }
 
-        protected Block parseOBlock(Span<byte> data, ref int offset)
+        protected Block parseOBlock()
         {
             var block = new OBlock
             {
                 // 4
                 Type = "O",
-                Data = data.ToArray(),
+
             };
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Out = isFlagOn(flags, 0);
             block.Point = isFlagOn(flags, 1);
             block.UnCond = isFlagOn(flags, 2);
@@ -336,233 +344,249 @@ namespace Fm2ndParser.Parsers
             block.Parent = isFlagOn(flags, 5);
             block.PicXY = isFlagOn(flags, 6);
 
-            block.Skill = getSkillBlock(data, ref offset);
-            block.OutSkill = getSkillBlock(data, ref offset);
-            block.X = getInt16(data, ref offset);
-            block.Y = getInt16(data, ref offset);
-            block.Number = getByte(data, ref offset);
-            block.Depth = getByte(data, ref offset);
+            block.Skill = getSkillBlock();
+            block.OutSkill = getSkillBlock();
+            block.X = getInt16();
+            block.Y = getInt16();
+            block.Number = getByte();
+            block.Depth = getByte();
 
             return block;
         }
 
-        protected Block parseEBlock(Span<byte> data, ref int offset)
+        protected Block parseEBlock()
         {
             var block = new EBlock
             {
                 // 5
                 Type = "E",
-                Data = data.ToArray(),
+
             };
 
             return block;
         }
 
 
-        protected Block parseRCBlock(Span<byte> data, ref int offset)
+        protected Block parseRCBlock()
         {
             var block = new RCBlock
             {
                 // 7
                 Type = "RC",
-                Data = data.ToArray(),
+
             };
 
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.In = isFlagOn(flags, 0);
             block.TurnX = isFlagOn(flags, 2);
             block.TurnY = isFlagOn(flags, 3);
             block.Same = isFlagOn(flags, 4);
 
-            //block.CommonImage =  getUInt16(data, ref offset);
-            block.CommonImage = getCommonImageBlock(data, ref offset);
-            block.X = getInt16(data, ref offset);
-            block.Y = getInt16(data, ref offset);
+            //block.CommonImage =  getUInt16();
+            block.CommonImage = getCommonImageBlock();
+            block.X = getInt16();
+            block.Y = getInt16();
 
             return block;
         }
 
-        protected Block parseSFBlock(Span<byte> data, ref int offset)
+        protected Block parseSFBlock()
         {
             var block = new SFBlock
             {
                 // 9
                 Type = "SF",
-                Data = data.ToArray(),
-                Loop = getByte(data, ref offset),
-                Skill = getSkillBlock(data, ref offset),
+
+                Loop = getByte(),
+                Skill = getSkillBlock(),
             };
             return block;
         }
 
-        protected Block parseSGBlock(Span<byte> data, ref int offset)
+        protected Block parseSGBlock()
         {
             var block = new SGBlock
             {
                 // 10
                 Type = "SG",
-                Data = data.ToArray(),
-                Skill = getSkillBlock(data, ref offset),
+
+                Skill = getSkillBlock(),
             };
             return block;
         }
 
-        protected Block parseSCBlock(Span<byte> data, ref int offset)
+        protected Block parseSCBlock()
         {
             var block = new SCBlock
             {
                 // 11
                 Type = "SC",
-                Data = data.ToArray(),
-                Skill = getSkillBlock(data, ref offset),
+
+                Skill = getSkillBlock(),
             };
             return block;
         }
 
-        protected Block parseIBlock(Span<byte> data, ref int offset)
+        protected Block parseIBlock()
         {
             var block = new IBlock
             {
                 // 12
                 Type = "I",
-                Data = data.ToArray(),
-                Wait = getUInt16(data, ref offset),
+
+                Wait = getUInt16(),
             };
 
             byte flags;
             ushort value;
 
-            getSplittedData(data, ref offset, out flags, out value);
+            getSplittedData(out flags, out value);
 
             block.I = value;
             block.TurnX = isFlagOn(flags, 6);
             block.TurnY = isFlagOn(flags, 7);
 
-            block.X = getInt16(data, ref offset);
-            block.Y = getInt16(data, ref offset);
+            block.X = getInt16();
+            block.Y = getInt16();
 
-            flags = getByte(data, ref offset);
+            flags = getByte();
             block.IgnoreDirection = isFlagOn(flags, 0);
 
             return block;
         }
 
-        protected Block parseEBBlock(Span<byte> data, ref int offset)
+        protected Block parseEBBlock()
         {
             var block = new EBBlock
             {
                 // 14
                 Type = "EB",
-                Data = data.ToArray(),
-                FadingType = (EBFadingType)getByte(data, ref offset),
-                Rgba = getRgba(data, ref offset),
-                Duration = getUInt16(data, ref offset),
+
+                FadingType = (EBFadingType)getByte(),
+                Rgba = getRgba(),
+                Duration = getUInt16(),
             };
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Player = isFlagOn(flags, 0);
             block.Enemy = isFlagOn(flags, 1);
             block.BG = isFlagOn(flags, 2);
             block.System = isFlagOn(flags, 3);
 
-            block.ShakeBgX = getEBShakeBG(data, ref offset);
-            block.ShakeBgY = getEBShakeBG(data, ref offset);
+            block.ShakeBgX = getEBShakeBG();
+            block.ShakeBgY = getEBShakeBG();
             return block;
         }
 
-        protected EBShakeBg getEBShakeBG(Span<byte> data, ref int offset)
+        protected EBShakeBg getEBShakeBG()
         {
             var result = new EBShakeBg
             {
-                Type = (EBShakeBgType)getByte(data, ref offset),
-                Shake = getByte(data, ref offset),
-                Duration = getByte(data, ref offset),
+                Type = (EBShakeBgType)getByte(),
+                Shake = getByte(),
+                Duration = getByte(),
             };
             return result;
         }
 
-        protected Block parseGSBlock(Span<byte> data, ref int offset)
+        protected Block parseGSBlock()
         {
-            getByte(data, ref offset);
+            getByte();
             var block = new GSBlock
             {
                 // 16
                 Type = "GS",
-                Data = data.ToArray(),
-                Skill = getSkillBlock(data, ref offset),
-                IsMore = getByte(data, ref offset) == 1,
-                Level = getByte(data, ref offset),
-                Add = getInt16(data, ref offset),
+
+                Skill = getSkillBlock(),
+                IsMore = getByte() == 1,
+                Level = getByte(),
+                Add = getInt16(),
             };
             return block;
         }
 
-        protected Block parseGLBlock(Span<byte> data, ref int offset)
+        protected Block parseGLBlock()
         {
-            getByte(data, ref offset);
+            getByte();
             var block = new GLBlock
             {
                 // 17
                 Type = "GL",
-                Data = data.ToArray(),
-                Skill = getSkillBlock(data, ref offset),
-                IsMore = getByte(data, ref offset) == 1,
-                Add = getInt16(data, ref offset),
+
+                Skill = getSkillBlock(),
+                IsMore = getByte() == 1,
+                Add = getInt16(),
             };
             return block;
         }
 
-        protected Block parseRPBlock(Span<byte> data, ref int offset)
+        protected Block parseRPBlock()
         {
             var block = new RPBlock
             {
                 // 20
                 Type = "RP",
-                Data = data.ToArray(),
+
             };
 
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.In = isFlagOn(flags, 0);
             block.TurnX = isFlagOn(flags, 2);
 
-            block.HitJunction = getHitJunctionBlock(data, ref offset);
-            block.X = getInt16(data, ref offset);
-            block.Y = getInt16(data, ref offset);
+            block.HitJunction = getHitJunctionBlock();
+            block.X = getInt16();
+            block.Y = getInt16();
 
             return block;
         }
 
-        protected Block parseGCBlock(Span<byte> data, ref int offset)
+        protected Block parseGCBlock()
         {
-            getByte(data, ref offset);
+            getByte();
             var block = new GCBlock
             {
                 // 21
                 Type = "GC",
-                Data = data.ToArray(),
-                PlayerLifeGauge = getInt16(data, ref offset),
-                PlayerSpecialGauge = getInt16(data, ref offset),
-                EnemyLifeGauge = getInt16(data, ref offset),
-                EnemySpecialGauge = getInt16(data, ref offset),
+
+                PlayerLifeGauge = getInt16(),
+                PlayerSpecialGauge = getInt16(),
+                EnemyLifeGauge = getInt16(),
+                EnemySpecialGauge = getInt16(),
             };
             return block;
         }
 
+        protected Block parseDBBlock()
+        {
+            var ifFail = getByte() == 1;
+            var skillRef = getSkillBlock();
+            skipEmptyBytes(2);
+            var condition = getByte();
 
-        protected Block parseFABlock(Span<byte> data, ref int offset)
+            var block = new DBBlock
+            {
+                // 22
+                Type = "DB",
+                Fail = ifFail,
+                Skill = skillRef,
+                Condition = (DBCondition)condition,
+            };
+            return block;
+        }
+        protected Block parseFABlock()
         {
             var block = new FABlock
             {
                 // 24
                 Type = "FA",
-                Data = data.ToArray(),
-                X = getInt16(data, ref offset),
-                Y = getInt16(data, ref offset),
-                Width = getInt16(data, ref offset),
-                Height = getInt16(data, ref offset),
-                Number = getByte(data, ref offset),
+
+                X = getInt16(),
+                Y = getInt16(),
+                Width = getInt16(),
+                Height = getInt16(),
+                Number = getByte(),
             };
 
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Cancel = isFlagOn(flags, 0);
             block.NoDetection = isFlagOn(flags, 4);
             block.Combo = isFlagOn(flags, 1);
@@ -573,101 +597,101 @@ namespace Fm2ndParser.Parsers
             block.Halfed = isFlagOn(flags, 2);
 
             // empty (maybe other flags)
-            getByte(data, ref offset);
+            getByte();
 
-            block.Power = getByte(data, ref offset);
+            block.Power = getByte();
 
             return block;
         }
 
-        protected Block parseFDBlock(Span<byte> data, ref int offset)
+        protected Block parseFDBlock()
         {
             var block = new FDBlock
             {
                 // 25
                 Type = "FD",
-                Data = data.ToArray(),
-                X = getInt16(data, ref offset),
-                Y = getInt16(data, ref offset),
-                Width = getInt16(data, ref offset),
-                Height = getInt16(data, ref offset),
-                Number = getByte(data, ref offset),
+
+                X = getInt16(),
+                Y = getInt16(),
+                Width = getInt16(),
+                Height = getInt16(),
+                Number = getByte(),
             };
 
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Collide = isFlagOn(flags, 0);
             block.Damaged = isFlagOn(flags, 1);
             block.Throw = isFlagOn(flags, 2);
 
-            block.DamageRate = getByte(data, ref offset);
+            block.DamageRate = getByte();
 
             return block;
         }
 
-        protected Block parsePSBlock(Span<byte> data, ref int offset)
+        protected Block parsePSBlock()
         {
             var block = new PSBlock
             {
                 // 26
                 Type = "PS",
-                Data = data.ToArray(),
-                PlayerTime = getByte(data, ref offset),
-                EnemyTime = getByte(data, ref offset),
+
+                PlayerTime = getByte(),
+                EnemyTime = getByte(),
             };
             return block;
         }
 
-        protected Block parseRBlock(Span<byte> data, ref int offset)
+        protected Block parseRBlock()
         {
             var block = new RBlock
             {
                 // 23
                 Type = "R",
-                Data = data.ToArray(),
-                HitsStand = getHitJunctionBlock(data, ref offset),
-                HitsCrouched = getHitJunctionBlock(data, ref offset),
-                HitsAir = getHitJunctionBlock(data, ref offset),
-                GuardStand = getHitJunctionBlock(data, ref offset),
-                GuardCrouched = getHitJunctionBlock(data, ref offset),
-                GuardAir = getHitJunctionBlock(data, ref offset),
+
+                HitsStand = getHitJunctionBlock(),
+                HitsCrouched = getHitJunctionBlock(),
+                HitsAir = getHitJunctionBlock(),
+                GuardStand = getHitJunctionBlock(),
+                GuardCrouched = getHitJunctionBlock(),
+                GuardAir = getHitJunctionBlock(),
             };
 
             return block;
         }
 
-        protected Block parseCBlock(Span<byte> data, ref int offset)
+        protected Block parseCBlock()
         {
             var block = new CBlock
             {
                 // 30
                 Type = "C",
-                Data = data.ToArray(),
+
             };
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
 
             block.Hits = isFlagOn(flags, 0);
             block.Uncond = isFlagOn(flags, 1);
 
             block.SkillCancelCondition = isFlagOn(flags, 3);
 
-            block.From = getByte(data, ref offset);
-            block.Skill = getSkill(data, ref offset);
-            block.To = getByte(data, ref offset);
+            block.From = getByte();
+            block.Skill = getSkill();
+            block.To = getByte();
 
             return block;
         }
 
-        protected Block parseVBlock(Span<byte> data, ref int offset)
+        protected Block parseVBlock()
         {
             var block = new VBlock
             {
                 // 31
                 Type = "V",
-                Data = data.ToArray(),
-                MultiCondSkill = getSkillBlock(data, ref offset),
-                Var = getByte(data, ref offset),
+
+                MultiCondSkill = getSkillBlock(),
+                Var = getByte(),
             };
-            var flags = getByte(data, ref offset);
+            var flags = getByte();
             block.Replace = isFlagOn(flags, 0);
             block.Add = isFlagOn(flags, 1);
 
@@ -680,9 +704,9 @@ namespace Fm2ndParser.Parsers
 
             block.UseEven = isFlagOn(flags, 7);
 
-            block.UseEvenVar = getByte(data, ref offset);
-            block.Value = getInt16(data, ref offset);
-            block.MultiCondValue = getInt16(data, ref offset);
+            block.UseEvenVar = getByte();
+            block.Value = getInt16();
+            block.MultiCondValue = getInt16();
 
             block.VarName = getVarName(block.Var);
             block.UseEvenVarName = getVarName(block.UseEvenVar);
@@ -739,68 +763,68 @@ namespace Fm2ndParser.Parsers
             }
             else
             {
-                return "Unknown";
+                throw new Exception($"Unknown variable name for {var}");
             }
         }
 
-        protected Block parseRndBlock(Span<byte> data, ref int offset)
+        protected Block parseRndBlock()
         {
             var block = new RndBlock
             {
                 // 32
                 Type = "Rnd",
-                Data = data.ToArray(),
-                RandomNum = getUInt16(data, ref offset),
-                WhenItsAbove = getUInt16(data, ref offset),
-            };
-            getByte(data, ref offset);
 
-            block.Skill = getSkillBlock(data, ref offset);
+                RandomNum = getUInt16(),
+                WhenItsAbove = getUInt16(),
+            };
+            getByte();
+
+            block.Skill = getSkillBlock();
 
             return block;
         }
 
-        protected Block parseColorBlock(Span<byte> data, ref int offset)
+        protected Block parseColorBlock()
         {
             var block = new ColorBlock
             {
                 // 35
                 Type = "COLOR",
-                Data = data.ToArray(),
-                Option = (ColorOption)getByte(data, ref offset),
-                Rgba = getRgba(data, ref offset),
+
+                Option = (ColorOption)getByte(),
+                Rgba = getRgba(),
             };
 
             return block;
         }
 
-        protected Rgba getRgba(Span<byte> data, ref int offset)
+        protected Rgba getRgba()
         {
             var result = new Rgba
             {
-                R = getByte(data, ref offset),
-                G = getByte(data, ref offset),
-                B = getByte(data, ref offset),
-                A = getByte(data, ref offset),
+                R = getByte(),
+                G = getByte(),
+                B = getByte(),
+                A = getByte(),
             };
             return result;
         }
 
-        protected Block parseComBlock(Span<byte> data, ref int offset)
+        protected Block parseComBlock()
         {
             var block = new ComBlock
             {
                 // 36
                 Type = "COM",
-                Data = data.ToArray(),
-                Skill = getSkillBlock(data, ref offset),
-                Time = getByte(data, ref offset),
+
+                Skill = getSkillBlock(),
+                Time = getByte(),
             };
 
             var steps = new List<CommandStep>();
             for (int i = 0; i < 5; i++)
             {
-                var step = getCommandStep(data, ref offset);
+                var step = getCommandStep();
                 steps.Add(step);
             }
             block.Steps = steps;
@@ -808,28 +832,28 @@ namespace Fm2ndParser.Parsers
             return block;
         }
 
-        protected Block parseAIBlock(Span<byte> data, ref int offset)
+        protected Block parseAIBlock()
         {
-            getByte(data, ref offset);
-            getByte(data, ref offset);
+            getByte();
+            getByte();
             var block = new AIBlock
             {
                 // 37
                 Type = "AI",
-                Data = data.ToArray(),
-                Num = getByte(data, ref offset),
-                Time = getByte(data, ref offset),
-                Option = (ColorOption)getByte(data, ref offset),
-                FadingType = (AIFadingType)getByte(data, ref offset),
-                Rgba = getRgba(data, ref offset),
+
+                Num = getByte(),
+                Time = getByte(),
+                Option = (ColorOption)getByte(),
+                FadingType = (AIFadingType)getByte(),
+                Rgba = getRgba(),
             };
             return block;
         }
 
-        protected CommandStep getCommandStep(Span<byte> data, ref int offset)
+        protected CommandStep getCommandStep()
         {
-            var flags1 = getByte(data, ref offset);
-            var flags2 = getByte(data, ref offset);
+            var flags1 = getByte();
+            var flags2 = getByte();
 
             var step = new CommandStep()
             {
@@ -849,21 +873,21 @@ namespace Fm2ndParser.Parsers
 
         #endregion
 
-        protected ICollection<ImageResource> readImages(Span<byte> bytes, ref int offset)
+        protected ICollection<ImageResource> readImages()
         {
-            var count = getUInt32(bytes, ref offset);
+            var count = getUInt32();
 
             var images = new List<ImageResource>();
 
             for (int i = 0; i < count; i++)
             {
-                var entryOffset = (uint)offset;
+                var entryOffset = _reader.BaseStream.Position;
 
-                var pointer = getWord(bytes, 0x4, ref offset);
-                var width = getUInt32(bytes, ref offset);
-                var height = getUInt32(bytes, ref offset);
-                var paletteType = getUInt32(bytes, ref offset); // 0: common, 1: private
-                var packedSize = getUInt32(bytes, ref offset);
+                var pointer = getBytes(0x4);
+                var width = getUInt32();
+                var height = getUInt32();
+                var paletteType = getUInt32(); // 0: common, 1: private
+                var packedSize = getUInt32();
                 var isPacked = packedSize != 0;
 
                 byte[] imageData = Array.Empty<byte>();
@@ -875,7 +899,7 @@ namespace Fm2ndParser.Parsers
                 if (width == 0 && height == 0)
                     sourceSize = 0;
 
-                var sourceData = getWord(bytes, (int)sourceSize, ref offset).ToArray();
+                var sourceData = getBytes((int)sourceSize);
 
                 if (isPacked)
                 {
@@ -891,7 +915,7 @@ namespace Fm2ndParser.Parsers
                     Height = height,
                     PaletteType = (PaletteType)paletteType,
                     PackedSize = packedSize,
-                    Offset = entryOffset,
+                    Offset = (uint)entryOffset,
                     PackedData = isPacked ? sourceData : imageData,
                     Data = imageData,
                 });
@@ -900,42 +924,42 @@ namespace Fm2ndParser.Parsers
             return images;
         }
 
-        protected ICollection<Palette> readGlobalPalettes(Span<byte> bytes, ref int offset)
+        protected ICollection<Palette> readGlobalPalettes()
         {
             var result = new List<Palette>();
 
             for (int i = 0; i < 8; i++)
             {
-                var palette = parsePalette(bytes, ref offset);
+                var palette = parsePalette();
                 result.Add(palette);
             }
 
             return result;
         }
 
-        protected ICollection<SoundResource> readSounds(Span<byte> bytes, ref int offset)
+        protected ICollection<SoundResource> readSounds()
         {
-            var count = getUInt32(bytes, ref offset);
+            var count = getUInt32();
             var result = new List<SoundResource>();
 
             for (int i = 0; i < count; i++)
             {
-                var pointer = getWord(bytes, 0x4, ref offset);
-                var name = getString(bytes, 0x20, ref offset);
-                var size = getUInt32(bytes, ref offset);
-                var flags = getByte(bytes, ref offset);
+                var pointer = getBytes(0x4);
+                var name = getString(0x20);
+                var size = getUInt32();
+                var flags = getByte();
                 assertUnusedFlags(flags, 0b11101100);
 
                 var endlessLoop = isFlagOn(flags, 4);
                 var type = (SoundType)(flags & 0b00000011);
 
-                var cddaTrack = getByte(bytes, ref offset);
+                var cddaTrack = getByte();
 
-                var soundData = size != 0 ? getWord(bytes, (int)size, ref offset).ToArray() : Array.Empty<byte>();
+                var soundData = size != 0 ? getBytes((int)size) : Array.Empty<byte>();
 
                 result.Add(new SoundResource
                 {
-                    Pointer = pointer.ToArray(),
+                    Pointer = pointer,
                     Name = name,
                     Size = size,
                     Type = type,
@@ -949,15 +973,14 @@ namespace Fm2ndParser.Parsers
         }
 
         #region palette
-        private Palette parsePalette(Span<byte> bytes, ref int offset)
+        private Palette parsePalette()
         {
-            var position = offset;
-            var data = getWord(bytes, 0x420, ref offset).ToArray();
+            var position = _reader.BaseStream.Position;
+            var data = getBytes(0x420);
             var colors = data.Chunk(4).Select(c => parseFM2kColor(c.ToArray())).ToArray();
 
             var result = new Palette
             {
-                Data = data,
                 Position = position,
                 Colors = colors,
             };
@@ -986,22 +1009,22 @@ namespace Fm2ndParser.Parsers
 
         #endregion
 
-        protected SkillReference getSkill(Span<byte> data, ref int offset)
+        protected SkillReference getSkill()
         {
             var result = new SkillReference
             {
-                Number = getUInt16(data, ref offset),
+                Number = getUInt16(),
             };
             result.Name = _skills[result.Number].Name;
             return result;
         }
 
-        protected SkillBlockReference getSkillBlock(Span<byte> data, ref int offset)
+        protected SkillBlockReference getSkillBlock()
         {
             var result = new SkillBlockReference
             {
-                Number = getUInt16(data, ref offset),
-                Block = getByte(data, ref offset),
+                Number = getUInt16(),
+                Block = getByte(),
             };
             if (_skills.Count > result.Number)
             {
@@ -1024,26 +1047,26 @@ namespace Fm2ndParser.Parsers
             }
         }
 
-        private void setSkillBlockTypes()
+        private void setSkillReferenceBlockTypes()
         {
             foreach (var skillRef in _skillBlockRefs)
             {
-                setSkillBlockType(skillRef);
+                setSkillReferenceBlockType(skillRef);
             }
         }
 
-        private void setSkillBlockType(SkillBlockReference skillBlockReference)
+        private void setSkillReferenceBlockType(SkillBlockReference skillBlockReference)
         {
             var blocks = _skills[skillBlockReference.Number].Blocks;
             if (blocks?.Count() > skillBlockReference.Block)
                 skillBlockReference.BlockType = blocks.Skip(skillBlockReference.Block).First().Type;
         }
 
-        protected SkillReference getHitJunctionBlock(Span<byte> data, ref int offset)
+        protected SkillReference getHitJunctionBlock()
         {
             var result = new SkillReference
             {
-                Number = getUInt16(data, ref offset),
+                Number = getUInt16(),
             };
             if (_kgt?.HitJunctions.Count > result.Number)
             {
@@ -1055,11 +1078,11 @@ namespace Fm2ndParser.Parsers
             }
             return result;
         }
-        protected SkillReference getCommonImageBlock(Span<byte> data, ref int offset)
+        protected SkillReference getCommonImageBlock()
         {
             var result = new SkillReference
             {
-                Number = getUInt16(data, ref offset),
+                Number = getUInt16(),
             };
             if (_kgt?.CommonImages.Count > result.Number)
             {
@@ -1072,6 +1095,46 @@ namespace Fm2ndParser.Parsers
             return result;
         }
 
+        protected IList<Skill> readSkills()
+        {
+            var count = getUInt32();
+
+            var skills = new List<Skill>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var skill = readSkill();
+                skill.Index = skills.Count();
+                skills.Add(skill);
+            }
+
+            return skills;
+        }
+
+        // 39 bytes
+        // 0x20 ansichar: name
+        // 0x02 uint16: position
+        // 0x01 unknown
+        // 0x04 uint32: type
+        protected Skill readSkill()
+        {
+
+            var result = new Skill
+            {
+                Name = getString(0x20),
+                Position = getUInt16(),
+            };
+
+            // unknown, always 0
+            var word = getByte();
+            Debug.Assert(word == 0);
+
+            result.Type = (SkillType)getUInt32();
+
+            return result;
+        }
+
+        #region Parse utility
         /// <summary>
         /// Legge 2 byte consecutivi dallo stream binario e li divide in due parti logiche:
         /// i bit alti del secondo byte vengono restituiti in <paramref name="flags"/>,
@@ -1092,11 +1155,11 @@ namespace Fm2ndParser.Parsers
         /// Restituisce il valore numerico ottenuto dai 2 byte letti,
         /// ma con il secondo byte mascherato in modo da conservare solo i suoi 5 bit bassi.
         /// </param>
-        protected void getSplittedData(Span<byte> data, ref int offset, out byte flags, out ushort value)
+        protected void getSplittedData(out byte flags, out ushort value)
         {
-            var word = getWord(data, 2, ref offset);
+            var word = getBytes(2);
 
-            var iMask = CreateBitMask(0, 5);
+            var iMask = ByteUtility.CreateBitMask(0, 5);
             flags = (byte)(word[1] & ~iMask);
             var iWord = new byte[2];
             word.CopyTo(iWord);
@@ -1104,117 +1167,76 @@ namespace Fm2ndParser.Parsers
             value = BitConverter.ToUInt16(iWord);
         }
 
-        public static uint CreateBitMask(int start, int length)
-        {
-            uint mask = 0xffffffff;
-            mask >>= 32 - length;
-            mask <<= start;
-            return mask;
-        }
-
         protected bool isFlagOn(byte flags, byte position)
         {
             return (flags & (1 << position)) > 0;
         }
 
-        protected byte getByte(Span<byte> data, ref int offset)
+        protected byte getByte()
         {
-            var word = getWord(data, 1, ref offset);
-            return word[0];
+            return _reader.ReadByte();
         }
 
-        protected sbyte getInt8(Span<byte> data, ref int offset)
+        protected sbyte getInt8()
         {
-            var result = getByte(data, ref offset);
-            return (sbyte)result;
+            return _reader.ReadSByte();
         }
 
-        protected short getInt16(Span<byte> data, ref int offset)
+        protected short getInt16()
         {
-            var word = getWord(data, 2, ref offset);
-            return BitConverter.ToInt16(word);
+            return _reader.ReadInt16();
         }
 
-        protected ushort getUInt16(Span<byte> data, ref int offset)
+        protected ushort getUInt16()
         {
-            var word = getWord(data, 2, ref offset);
-            return BitConverter.ToUInt16(word);
+            return _reader.ReadUInt16();
+        }
+
+        protected int getInt32()
+        {
+            return _reader.ReadInt32();
+        }
+
+        protected uint getUInt32()
+        {
+            return _reader.ReadUInt32();
         }
 
 
-        protected int getInt32(Span<byte> data, ref int offset)
+        protected string getString(int length)
         {
-            var word = getWord(data, 4, ref offset);
-            return BitConverter.ToInt32(word);
-        }
+            var word = getBytes(length);
+            var zeroIndex = Array.IndexOf(word, (byte)0);
+            var slice = zeroIndex >= 0 ? word.AsSpan(0, zeroIndex).ToArray() : word;
 
-        protected uint getUInt32(Span<byte> data, ref int offset)
-        {
-            var word = getWord(data, 4, ref offset);
-            return BitConverter.ToUInt32(word);
-        }
-
-        protected IList<Skill> readSkills(Span<byte> bytes, ref int offset)
-        {
-            var count = getUInt32(bytes, ref offset);
-
-            var skills = new List<Skill>();
-
-            for (int i = 0; i < count; i++)
-            {
-                var skill = readSkill(bytes, ref offset);
-                skill.Index = skills.Count();
-                skills.Add(skill);
-            }
-
-            return skills;
-        }
-
-        // 39 bytes
-        // 0x20 ansichar: name
-        // 0x02 uint16: position
-        // 0x01 unknown
-        // 0x04 uint32: type
-        protected Skill readSkill(Span<byte> bytes, ref int offset)
-        {
-
-            var result = new Skill
-            {
-                Name = getString(bytes, 32, ref offset),
-                Position = getUInt16(bytes, ref offset),
-            };
-
-            // unknown, always 0
-            var word = getByte(bytes, ref offset);
-            Debug.Assert(word == 0);
-
-            result.Type = getUInt32(bytes, ref offset);
-
+            // CP932 (Shift_JIS Microsoft variant)
+            var result = Encoding.GetEncoding(932).GetString(slice);
+            //var result = Encoding.Default.GetString(slice).Trim();
+            //var result = Encoding.Default.GetString(word).Replace("\0", "").Trim();
             return result;
         }
 
-        protected static Span<byte> getWord(Span<byte> bytes, int length, ref int offset)
+        protected byte[] getBytes(int length)
         {
-            Span<byte> word = bytes.Slice(offset, length);
-            offset += length;
-            return word;
+            return _reader.ReadBytes(length);
         }
 
-        protected void skipEmptyBytes(Span<byte> bytes, int count, ref int offset)
+        protected void skipEmptyBytes(long count)
         {
-            for (int i = 0; i < count; i++)
+            for (long i = 0; i < count; i++)
             {
-                var b = getByte(bytes, ref offset);
+                var b = getByte();
                 Debug.Assert(b == 0);
             }
         }
 
-        protected void skipRemaningEmptyBytes(Span<byte> bytes, ref int offset)
+        protected void skipRemaningEmptyBytes()
         {
             // the remaning are all 0s
-            skipEmptyBytes(bytes, bytes.Length - offset, ref offset);
+            skipEmptyBytes(_reader.BaseStream.Length - _reader.BaseStream.Position);
         }
 
+        #endregion
         protected void assertUnusedFlags(byte flags, byte bitMask)
         {
             Debug.Assert((flags & bitMask) == 0);
