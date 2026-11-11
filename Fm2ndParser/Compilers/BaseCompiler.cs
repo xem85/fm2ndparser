@@ -200,7 +200,7 @@ namespace Fm2ndParser.Compilers
                 if (enableRePacking && isPacked && (image.PackedData == null || image.PackedData.Length == 0))
                 {
                     // update packedData
-                    image.PackedData = ImageCompression.Compress(image.Data);
+                    image.PackedData = Rle3CodecCompression.Compress(image.Data);
                     image.PackedSize = (uint)image.PackedData.LongLength;
                 }
 

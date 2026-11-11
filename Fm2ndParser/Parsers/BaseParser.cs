@@ -903,7 +903,7 @@ namespace Fm2ndParser.Parsers
 
                 if (isPacked)
                 {
-                    imageData = ImageCompression.Extract(sourceData, unpackedSize);
+                    imageData = Rle3CodecCompression.Extract(sourceData, unpackedSize);
                 }
                 else
                     imageData = sourceData;
